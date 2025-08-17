@@ -425,6 +425,21 @@ def setup_schedule():
     schedule.every().sunday.at(app.config.get('DIGEST_IST_TIME','18:00')).do(send_weekly_digest)
     t = threading.Thread(target=scheduler_thread, daemon=True); t.start()
 
+
+# Initialize DB and scheduler at import time (works under gunicorn too)
+try:
+    init_db()
+except Exception as e:
+    print("init_db error:", e)
+
+# Optionally disable scheduler via env var DISABLE_SCHEDULER=1
+if not os.environ.get("DISABLE_SCHEDULER"):
+    try:
+        setup_schedule()
+    except Exception as e:
+        print("setup_schedule error:", e)
+
+
 if __name__ == '__main__':
     init_db()
     setup_schedule()
