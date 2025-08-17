@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: sudoku-secure-pro
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn main:app"
+    plan: free
