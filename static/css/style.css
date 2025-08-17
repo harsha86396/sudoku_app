@@ -1,0 +1,39 @@
+:root{
+  --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --accent:#22c55e; --muted:#94a3b8; --danger:#ef4444;
+  --cell:#0b1220; --link:#38bdf8;
+}
+/* light theme */
+:root.light{
+  --bg:#f5f7fb; --panel:#ffffff; --text:#0f172a; --accent:#16a34a; --muted:#4b5563; --danger:#b91c1c;
+  --cell:#eef2ff; --link:#0369a1;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:0}
+.header{padding:16px 20px;background:linear-gradient(90deg,#0ea5e9,#22c55e);color:#0b1220;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+.header .brand{font-size:18px}
+.theme-toggle{background:transparent;border:2px solid rgba(0,0,0,.15);padding:6px 10px;border-radius:10px;cursor:pointer}
+.container{max-width:1100px;margin:24px auto;padding:0 16px}
+.card{background:var(--panel);border-radius:16px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,.12)}
+h1,h2{margin:0 0 12px 0}
+a{color:var(--link)}
+a.btn,button.btn{background:var(--accent);color:#07120a;border:none;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+.btn.secondary{background:#38bdf8;color:#07120a}
+.btn.danger{background:var(--danger);color:#fff}
+nav a{color:var(--text);margin-right:12px;text-decoration:none}
+nav a:hover{text-decoration:underline}
+.grid{display:grid;grid-template-columns:repeat(9, 40px);gap:6px;justify-content:center;margin:16px 0}
+.cell{width:40px;height:40px;background:var(--cell);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;user-select:none}
+.cell.prefilled{color:#38bdf8}
+.cell.error{background:#3b0d0d}
+.controls{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0}
+.small{color:var(--muted);font-size:12px}
+footer{opacity:.7;text-align:center;padding:24px}
+input,select{width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:var(--cell);color:var(--text)}
+:root.light input,:root.light select{border-color:#cbd5e1}
+label{font-size:12px;color:var(--muted)}
+hr{border-color:#1f2937}
+.alert{padding:10px 12px;border-radius:10px;margin:8px 0;background:#0b3a1a;color:#b7f7c5}
+.alert.err{background:#3a0b0b;color:#ffc9c9}
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{padding:8px;border-bottom:1px solid #1f2937;text-align:left}
+:root.light .table th,:root.light .table td{border-bottom:1px solid #e5e7eb}
