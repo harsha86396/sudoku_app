@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card">
+  <h2>Email Logs</h2>
+  <table class="table">
+    <thead><tr><th>ID</th><th>User ID</th><th>Email</th><th>Subject</th><th>Sent At</th></tr></thead>
+    <tbody>
+      {% for e in rows %}
+        <tr><td>{{ e[0] }}</td><td>{{ e[1] }}</td><td>{{ e[2] }}</td><td>{{ e[3] }}</td><td>{{ e[4] }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <a class="btn secondary" href="/admin">Back</a>
+</div>
+{% endblock %}

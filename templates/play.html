@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card">
+  <h1>🧩 Sudoku</h1>
+  <div class="small">Theme: <span id="theme-name">Dark</span> • Hints left: <span id="hints-left">3</span> • Time: <span id="timer">0</span>s</div>
+  <div style="margin:12px 0">
+    Difficulty: 
+    <select id="difficulty">
+      <option value="easy">Easy</option>
+      <option value="medium" selected>Medium</option>
+      <option value="hard">Hard</option>
+    </select>
+    <button class="btn" onclick="newPuzzle()">New Puzzle</button>
+    <button class="btn secondary" onclick="getHint()">Get Hint</button>
+    <button class="btn danger" onclick="restart()">Restart</button>
+  </div>
+  <div id="board" class="grid"></div>
+  <div class="controls">
+    <button class="btn" onclick="setDigit(1)">1</button>
+    <button class="btn" onclick="setDigit(2)">2</button>
+    <button class="btn" onclick="setDigit(3)">3</button>
+    <button class="btn" onclick="setDigit(4)">4</button>
+    <button class="btn" onclick="setDigit(5)">5</button>
+    <button class="btn" onclick="setDigit(6)">6</button>
+    <button class="btn" onclick="setDigit(7)">7</button>
+    <button class="btn" onclick="setDigit(8)">8</button>
+    <button class="btn" onclick="setDigit(9)">9</button>
+    <button class="btn secondary" onclick="erase()">Erase</button>
+  </div>
+  <p class="small">“Sudoku powered by Harsha Enterprises”</p>
+  <a class="btn secondary" href="/dashboard">Back</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let puzzle = [];
+let solution = [];
+let selected = null;
+let startTime = null;
+let timerInterval = null;
+let hintsLeft = 3;
+let original = [];
+
+function $(id){ return document.getElementById(id); }
+
+function makeCell(r,c,val,prefilled){
+  const d = document.createElement('div');
+  d.className = 'cell' + (prefilled ? ' prefilled' : '');
+  d.dataset.r = r; d.dataset.c = c;
+  d.textContent = val ? val : '';
+  d.onclick = () => { if(!prefilled){ if(selected) selected.style.outline='none'; selected = d; d.style.outline='2px solid #22c55e'; } };
+  return d;
+}
+
+function drawBoard(){
+  const board = $('board');
+  board.innerHTML = '';
+  for(let r=0;r<9;r++){
+    for(let c=0;c<9;c++){
+      board.appendChild(makeCell(r,c,puzzle[r][c], original[r][c] !== 0));
+    }
+  }
+}
+
+async function newPuzzle(){
+  hintsLeft = 3; $('hints-left').textContent = hintsLeft;
+  const diff = $('difficulty').value;
+  const resp = await fetch('/api/new_puzzle?difficulty=' + diff);
+  const data = await resp.json();
+  puzzle = data.puzzle;
+  solution = data.solution;
+  original = JSON.parse(JSON.stringify(puzzle));
+  startTimer();
+  drawBoard();
+}
+
+function startTimer(){
+  if(timerInterval) clearInterval(timerInterval);
+  startTime = Date.now();
+  timerInterval = setInterval(()=>{
+    $('timer').textContent = Math.floor((Date.now() - startTime)/1000);
+  }, 500);
+}
+
+function setDigit(n){
+  if(!selected) return;
+  const r = parseInt(selected.dataset.r), c = parseInt(selected.dataset.c);
+  if(original[r][c] !== 0) return;
+  selected.textContent = n;
+  puzzle[r][c] = n;
+  validateCell(selected, r, c);
+  checkSolved();
+}
+
+function erase(){
+  if(!selected) return;
+  const r = parseInt(selected.dataset.r), c = parseInt(selected.dataset.c);
+  if(original[r][c] !== 0) return;
+  selected.textContent = '';
+  selected.classList.remove('error');
+  puzzle[r][c] = 0;
+}
+
+function validateCell(cell, r, c){
+  if(puzzle[r][c] === 0){ cell.classList.remove('error'); return; }
+  if(puzzle[r][c] !== solution[r][c]){
+    cell.classList.add('error');
+  } else {
+    cell.classList.remove('error');
+  }
+}
+
+function isSolved(){
+  for(let r=0;r<9;r++){
+    for(let c=0;c<9;c++){
+      if(puzzle[r][c] !== solution[r][c]) return false;
+    }
+  }
+  return true;
+}
+
+async function checkSolved(){
+  if(isSolved()){
+    clearInterval(timerInterval);
+    const seconds = Math.floor((Date.now() - startTime)/1000);
+    alert('🎉 Solved in ' + seconds + ' seconds! Posting to leaderboard...');
+    try{
+      const res = await fetch('/api/record_result', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({seconds})
+      });
+      const j = await res.json();
+      if(j.status === 'ok'){
+        alert('Result recorded! Your best: ' + j.best_time + 's. Rank: #' + j.rank);
+        window.location.href = '/leaderboard';
+      } else {
+        alert('Result not recorded: ' + (j.error || 'Unknown error'));
+      }
+    }catch(e){
+      console.error(e);
+      alert('Failed to post result.');
+    }
+  }
+}
+
+async function getHint(){
+  if(hintsLeft <= 0){ alert('No hints left.'); return; }
+  const res = await fetch('/api/hint', {method:'POST'});
+  const j = await res.json();
+  if(j.error){ alert(j.error); return; }
+  const {r,c,val} = j;
+  const index = r*9 + c;
+  const board = $('board');
+  const cell = board.children[index];
+  puzzle[r][c] = val;
+  original[r][c] = val; // lock it
+  cell.textContent = val;
+  cell.classList.add('prefilled');
+  hintsLeft = j.hints_left;
+  $('hints-left').textContent = hintsLeft;
+  checkSolved();
+}
+
+function restart(){
+  puzzle = JSON.parse(JSON.stringify(original));
+  drawBoard();
+  startTimer();
+}
+
+window.addEventListener('DOMContentLoaded', ()=>{
+  newPuzzle();
+  const isLight = document.documentElement.classList.contains('light');
+  document.getElementById('theme-name').textContent = isLight ? 'Light' : 'Dark';
+});
+</script>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card">
+  <h2>Password Reset Attempts</h2>
+  <table class="table">
+    <thead><tr><th>ID</th><th>User ID</th><th>Expires At</th><th>Created At</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+        <tr><td>{{ r[0] }}</td><td>{{ r[1] }}</td><td>{{ r[2] }}</td><td>{{ r[3] }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <a class="btn secondary" href="/admin">Back</a>
+</div>
+{% endblock %}
