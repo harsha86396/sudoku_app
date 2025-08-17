@@ -1,58 +1,20 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sudoku Secure Pro</title>
-
-  <!-- App Theme -->
-  <meta name="theme-color" content="#2196f3">
-
-  <!-- PWA Manifest -->
-  <link rel="manifest" href="/static/manifest.json">
-
-  <!-- Icons -->
-  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="/static/icons/icon-512.png">
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="/static/style.css">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title or 'Sudoku' }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 </head>
 <body>
-  <!-- Navbar -->
-  <header>
-    <h1>Sudoku Secure Pro</h1>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/play">Play</a>
-      <a href="/profile">Profile</a>
-      <a href="/logout">Logout</a>
-    </nav>
-  </header>
-
-  <!-- Main Content -->
-  <main>
-    {% block content %}{% endblock %}
-  </main>
-
-  <!-- Footer -->
-  <footer>
-    <p>&copy; 2025 Sudoku Secure Pro</p>
-  </footer>
-
-  <!-- Scripts -->
-  <script src="/static/main.js"></script>
-
-  <!-- Register Service Worker -->
-  <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/static/service-worker.js")
-          .then(reg => console.log("✅ Service Worker registered:", reg))
-          .catch(err => console.error("❌ Service Worker registration failed:", err));
-      });
-    }
-  </script>
+  <div class="header">
+    <div class="brand">{{ config.APP_NAME }}</div>
+    <div>
+      <button class="theme-toggle" onclick="toggleTheme()">🌓 Theme</button>
+    </div>
+  </div>
+  <div class="container">{% block content %}{% endblock %}</div>
+  <footer>© {{ config.APP_NAME }}</footer>
+  {% block scripts %}{% endblock %}
 </body>
 </html>
