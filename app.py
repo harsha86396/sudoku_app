@@ -363,19 +363,21 @@ def record_result():
         send_email(em, '🎉 New Personal Best!', f'Congrats {nm}! New PB: {best}s. Keep it up!', uid)
     return jsonify({'status':'ok','best_time':best,'rank':rank})
 
-@app.route('/leaderboard')
+@app.route("/leaderboard")
 def leaderboard():
-    con = get_db(); cur = con.cursor()
-    cur.execute('''
-        SELECT u.name, MIN(r.seconds) as best_time, COUNT(r.id) as games
-        FROM users u 
-        JOIN results r ON r.user_id=u.id
-        GROUP BY u.id 
-        ORDER BY best_time ASC 
-        LIMIT 25
-    ''')
-    rows = cur.fetchall()
-    return render_template('leaderboard.html', rows=rows, title='Leaderboard')
+    conn = get_db_connection()
+    rows = conn.execute("""
+        SELECT u.username, MIN(s.time_taken) AS best_time, COUNT(s.id) AS games
+        FROM users u
+        JOIN scores s ON u.id = s.user_id
+        GROUP BY u.id
+        HAVING best_time IS NOT NULL
+        ORDER BY best_time ASC
+        LIMIT 10
+    """).fetchall()
+    conn.close()
+    return render_template("leaderboard.html", rows=rows)
+
 
 @app.route('/download_history')
 def download_history():
