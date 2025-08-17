@@ -3,26 +3,41 @@
 <div class="card">
   <h1>🏆 Leaderboard</h1>
   <p class="small">Fastest all-time bests</p>
-  <table class="table">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Name</th>
-        <th>Best (s)</th>
-        <th>Games</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in rows %}
+
+  {% if rows %}
+    <table class="table">
+      <thead>
         <tr>
-          <td>{{ loop.index }}</td>
-          <td>{{ row[0] }}</td>
-          <td>{{ row[1] }}</td>
-          <td>{{ row[2] }}</td>
+          <th>#</th>
+          <th>Player</th>
+          <th>Best (s)</th>
+          <th>Games</th>
         </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>
+              {% if loop.index == 1 %} 🥇 
+              {% elif loop.index == 2 %} 🥈 
+              {% elif loop.index == 3 %} 🥉 
+              {% else %} {{ loop.index }} {% endif %}
+            </td>
+            <td>
+              <img src="/static/icons/avatar.png" alt="avatar" 
+                   style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;">
+              {{ row[0] }}
+            </td>
+            <td>{{ row[1] }}</td>
+            <td>{{ row[2] }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="small">No results yet. Be the first to play! 🎉</p>
+  {% endif %}
+
   <a class="btn secondary" href="/dashboard">Back</a>
 </div>
 {% endblock %}
