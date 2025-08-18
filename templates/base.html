@@ -44,11 +44,16 @@
       border: 1px solid #ddd;
       border-radius: 4px;
       box-sizing: border-box;
+      background-color: #fff;
+      color: #333;
     }
     body.dark input, body.dark button, body.dark select {
       background-color: #444;
       color: #f5f5f5;
       border-color: #666;
+    }
+    body.dark input[readonly] {
+      background-color: #555;
     }
     button {
       background-color: #007bff;
@@ -96,13 +101,25 @@
     body.dark .success {
       color: #4caf50;
     }
+    #sudoku-grid {
+      background-color: #ddd;
+    }
+    body.dark #sudoku-grid {
+      background-color: #444;
+    }
+    #sudoku-grid input {
+      border: 1px solid #333;
+    }
+    body.dark #sudoku-grid input {
+      border-color: #666;
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>{{ config.APP_NAME }}</h1>
     <nav>
-      <a href="#" onclick="toggleTheme()">🌓 Theme</a>
+      <a href="#" onclick="toggleTheme()">🌓 Toggle Theme</a>
     </nav>
   </header>
   {% block content %}{% endblock %}
@@ -112,12 +129,24 @@
   {% block scripts %}
     <script>
       function toggleTheme() {
-        document.body.classList.toggle('dark');
-        localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+        const isDark = document.body.classList.toggle('dark');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        document.querySelectorAll('#theme').forEach(el => {
+          el.textContent = isDark ? 'Dark' : 'Light';
+        });
       }
-      if (localStorage.getItem('theme') === 'dark') {
-        document.body.classList.add('dark');
-      }
+      window.addEventListener('load', () => {
+        if (localStorage.getItem('theme') === 'dark') {
+          document.body.classList.add('dark');
+          document.querySelectorAll('#theme').forEach(el => {
+            el.textContent = 'Dark';
+          });
+        } else {
+          document.querySelectorAll('#theme').forEach(el => {
+            el.textContent = 'Light';
+          });
+        }
+      });
     </script>
   {% endblock %}
 </body>
