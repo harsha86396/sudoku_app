@@ -311,7 +311,7 @@ def forgot_password():
             try:
                 cur.execute("INSERT INTO password_resets (user_id, token, otp_hash, expires_at) VALUES (%s, %s, %s, %s)", 
                             (user['id'], token, otp_hash, expires_at))
-                cur.execute("INSERT INTO otp_rate_limit (email, last_request_ts) VALUES (%s, %s) ON CONFLICT (email) UPDATE SET last_request_ts = %s", 
+                cur.execute("INSERT INTO otp_rate_limit (email, last_request_ts) VALUES (%s, %s) ON CONFLICT (email) DO UPDATE SET last_request_ts = %s", 
                             (email, now, now))
                 db.commit()
                 if app.config.get('EMAIL_ENABLED'):
@@ -431,7 +431,7 @@ def resend_otp():
         cur.execute("UPDATE password_resets SET used = 1 WHERE user_id = %s AND used = 0", (user['id'],))
         cur.execute("INSERT INTO password_resets (user_id, token, otp_hash, expires_at) VALUES (%s, %s, %s, %s)", 
                     (user['id'], token, otp_hash, expires_at))
-        cur.execute("INSERT INTO otp_rate_limit (email, last_request_ts) VALUES (%s, %s) ON CONFLICT (email) UPDATE SET last_request_ts = %s", 
+        cur.execute("INSERT INTO otp_rate_limit (email, last_request_ts) VALUES (%s, %s) ON CONFLICT (email) DO UPDATE SET last_request_ts = %s", 
                     (email, now, now))
         db.commit()
         if app.config.get('EMAIL_ENABLED'):
