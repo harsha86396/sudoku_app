@@ -1,5 +1,6 @@
 import os
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import random
 import io
 import smtplib
@@ -23,11 +24,6 @@ from db import get_db, close_db
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Persistent DB path
-INSTANCE_DIR = os.environ.get("INSTANCE_DIR", "/mnt/disk")
-os.makedirs(INSTANCE_DIR, exist_ok=True)
-DB_PATH = os.path.join(INSTANCE_DIR, "sudoku.db")
-
 # Flask app
 app = Flask(__name__)
 app.config.from_object(config)
@@ -36,12 +32,12 @@ app.teardown_appcontext(close_db)
 
 # Safe init: auto create tables if missing
 def ensure_schema():
-    logger.info("Ensuring schema at %s", DB_PATH)
-    con = sqlite3.connect(DB_PATH)
+    logger.info("Ensuring schema for PostgreSQL database")
+    con = psycopg2.connect(os.environ.get("DATABASE_URL"), cursor_factory=RealDictCursor)
     cur = con.cursor()
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         name TEXT,
         email TEXT UNIQUE,
         password_hash TEXT,
@@ -49,7 +45,7 @@ def ensure_schema():
     )""")
     cur.execute("""
     CREATE TABLE IF NOT EXISTS results (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         user_id INTEGER,
         seconds INTEGER,
         played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -57,7 +53,7 @@ def ensure_schema():
     )""")
     cur.execute("""
     CREATE TABLE IF NOT EXISTS email_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         recipient TEXT,
         subject TEXT,
         status TEXT,
@@ -65,7 +61,7 @@ def ensure_schema():
     )""")
     cur.execute("""
     CREATE TABLE IF NOT EXISTS password_resets (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         user_id INTEGER,
         token TEXT,
         otp_hash TEXT,
@@ -80,9 +76,9 @@ def ensure_schema():
     )""")
     con.commit()
     con.close()
-    logger.info("Database schema ensured at %s", DB_PATH)
+    logger.info("Database schema ensured")
 
-# Routes (from app (1).py, with debug endpoint added)
+# Routes
 @app.route('/')
 def index():
     msg = session.pop('msg', None)
@@ -107,11 +103,11 @@ def register():
         db = get_db()
         cur = db.cursor()
         password_hash = generate_password_hash(password)
-        cur.execute("INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)", (name, email, password_hash))
+        cur.execute("INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s)", (name, email, password_hash))
         db.commit()
         session['msg'] = 'Registration successful! Please log in.'
         return redirect(url_for('index'))
-    except sqlite3.IntegrityError:
+    except psycopg2.IntegrityError:
         session['err'] = 'Email already registered'
         return redirect(url_for('index'))
     except Exception as e:
@@ -129,7 +125,7 @@ def login():
     try:
         db = get_db()
         cur = db.cursor()
-        cur.execute("SELECT id, name, password_hash FROM users WHERE email = ?", (email,))
+        cur.execute("SELECT id, name, password_hash FROM users WHERE email = %s", (email,))
         user = cur.fetchone()
         if user and check_password_hash(user['password_hash'], password):
             session['user_id'] = user['id']
@@ -192,7 +188,7 @@ def submit():
     try:
         db = get_db()
         cur = db.cursor()
-        cur.execute("INSERT INTO results (user_id, seconds) VALUES (?, ?)", (session['user_id'], seconds))
+        cur.execute("INSERT INTO results (user_id, seconds) VALUES (%s, %s)", (session['user_id'], seconds))
         db.commit()
         session.pop('puzzle', None)
         session.pop('solution', None)
@@ -221,10 +217,10 @@ def download_pdf():
         return redirect(url_for('index'))
     db = get_db()
     cur = db.cursor()
-    cur.execute("SELECT name, email FROM users WHERE id = ?", (session['user_id'],))
+    cur.execute("SELECT name, email FROM users WHERE id = %s", (session['user_id'],))
     user = cur.fetchone()
     since = datetime.utcnow() - timedelta(days=7)
-    cur.execute("SELECT seconds, played_at FROM results WHERE user_id = ? AND played_at >= ?", (session['user_id'], since))
+    cur.execute("SELECT seconds, played_at FROM results WHERE user_id = %s AND played_at >= %s", (session['user_id'], since))
     rows = cur.fetchall()
     out_stream = io.BytesIO()
     generate_last7_pdf(user['name'], user['email'], rows, out_stream)
@@ -244,13 +240,13 @@ def forgot_password():
             return redirect(url_for('forgot_password'))
         db = get_db()
         cur = db.cursor()
-        cur.execute("SELECT last_request_ts FROM otp_rate_limit WHERE email = ?", (email,))
+        cur.execute("SELECT last_request_ts FROM otp_rate_limit WHERE email = %s", (email,))
         last_request = cur.fetchone()
         now = time_mod.time()
         if last_request and now - last_request['last_request_ts'] < config.OTP_RATE_LIMIT_SECONDS:
             session['err'] = 'Please wait before requesting another OTP'
             return redirect(url_for('forgot_password'))
-        cur.execute("SELECT id FROM users WHERE email = ?", (email,))
+        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
         user = cur.fetchone()
         if not user:
             session['err'] = 'Email not found'
@@ -260,9 +256,10 @@ def forgot_password():
         expires_at = datetime.utcnow() + timedelta(minutes=config.OTP_EXP_MINUTES)
         token = os.urandom(16).hex()
         try:
-            cur.execute("INSERT INTO password_resets (user_id, token, otp_hash, expires_at) VALUES (?, ?, ?, ?)", 
+            cur.execute("INSERT INTO password_resets (user_id, token, otp_hash, expires_at) VALUES (%s, %s, %s, %s)", 
                         (user['id'], token, otp_hash, expires_at))
-            cur.execute("INSERT OR REPLACE INTO otp_rate_limit (email, last_request_ts) VALUES (?, ?)", (email, now))
+            cur.execute("INSERT INTO otp_rate_limit (email, last_request_ts) VALUES (%s, %s) ON CONFLICT (email) UPDATE SET last_request_ts = %s", 
+                        (email, now, now))
             db.commit()
             if app.config.get('EMAIL_ENABLED'):
                 body = f"Your OTP for password reset is {otp}. It expires in {config.OTP_EXP_MINUTES} minutes."
@@ -295,7 +292,7 @@ def reset_password():
             return redirect(url_for('reset_password'))
         db = get_db()
         cur = db.cursor()
-        cur.execute("SELECT user_id, otp_hash, expires_at FROM password_resets WHERE token = ? AND used = 0", (token,))
+        cur.execute("SELECT user_id, otp_hash, expires_at FROM password_resets WHERE token = %s AND used = 0", (token,))
         reset = cur.fetchone()
         if not reset or reset['expires_at'] < datetime.utcnow():
             session['err'] = 'Invalid or expired OTP'
@@ -305,8 +302,8 @@ def reset_password():
             return redirect(url_for('reset_password'))
         try:
             password_hash = generate_password_hash(password)
-            cur.execute("UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, reset['user_id']))
-            cur.execute("UPDATE password_resets SET used = 1 WHERE token = ?", (token,))
+            cur.execute("UPDATE users SET password_hash = %s WHERE id = %s", (password_hash, reset['user_id']))
+            cur.execute("UPDATE password_resets SET used = 1 WHERE token = %s", (token,))
             db.commit()
             session.pop('reset_email', None)
             session.pop('reset_token', None)
@@ -327,13 +324,13 @@ def resend_otp():
         return redirect(url_for('forgot_password'))
     db = get_db()
     cur = db.cursor()
-    cur.execute("SELECT last_request_ts FROM otp_rate_limit WHERE email = ?", (email,))
+    cur.execute("SELECT last_request_ts FROM otp_rate_limit WHERE email = %s", (email,))
     last_request = cur.fetchone()
     now = time_mod.time()
     if last_request and now - last_request['last_request_ts'] < config.OTP_RATE_LIMIT_SECONDS:
         session['err'] = 'Please wait before requesting another OTP'
         return redirect(url_for('reset_password'))
-    cur.execute("SELECT id FROM users WHERE email = ?", (email,))
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
     user = cur.fetchone()
     if not user:
         session['err'] = 'Email not found'
@@ -343,10 +340,11 @@ def resend_otp():
     expires_at = datetime.utcnow() + timedelta(minutes=config.OTP_EXP_MINUTES)
     token = os.urandom(16).hex()
     try:
-        cur.execute("UPDATE password_resets SET used = 1 WHERE user_id = ? AND used = 0", (user['id'],))
-        cur.execute("INSERT INTO password_resets (user_id, token, otp_hash, expires_at) VALUES (?, ?, ?, ?)", 
+        cur.execute("UPDATE password_resets SET used = 1 WHERE user_id = %s AND used = 0", (user['id'],))
+        cur.execute("INSERT INTO password_resets (user_id, token, otp_hash, expires_at) VALUES (%s, %s, %s, %s)", 
                     (user['id'], token, otp_hash, expires_at))
-        cur.execute("INSERT OR REPLACE INTO otp_rate_limit (email, last_request_ts) VALUES (?, ?)", (email, now))
+        cur.execute("INSERT INTO otp_rate_limit (email, last_request_ts) VALUES (%s, %s) ON CONFLICT (email) UPDATE SET last_request_ts = %s", 
+                    (email, now, now))
         db.commit()
         if app.config.get('EMAIL_ENABLED'):
             body = f"Your new OTP for password reset is {otp}. It expires in {config.OTP_EXP_MINUTES} minutes."
@@ -423,14 +421,12 @@ def admin_password_resets():
 # Debug endpoint
 @app.route('/debug/db_check')
 def debug_db_check():
-    con = get_db()
-    cur = con.cursor()
-    cur.execute('SELECT count(*) as user_count FROM users')
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT count(*) as user_count FROM users")
     user_count = cur.fetchone()['user_count']
     return jsonify({
-        'db_path': DB_PATH,
-        'db_exists': os.path.exists(DB_PATH),
-        'db_size': os.path.getsize(DB_PATH) if os.path.exists(DB_PATH) else 0,
+        'db_url': os.environ.get("DATABASE_URL", "Not set"),
         'user_count': user_count
     })
 
@@ -450,13 +446,13 @@ def send_email(recipient, subject, body, user_id):
             server.sendmail(app.config.get('SMTP_USER'), recipient, msg.as_string())
         db = get_db()
         cur = db.cursor()
-        cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (?, ?, ?)", (recipient, subject, 'sent'))
+        cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", (recipient, subject, 'sent'))
         db.commit()
     except Exception as e:
         logger.exception("Email sending failed for %s: %s", recipient, e)
         db = get_db()
         cur = db.cursor()
-        cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (?, ?, ?)", (recipient, subject, 'failed'))
+        cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", (recipient, subject, 'failed'))
         db.commit()
 
 # Weekly digest
@@ -470,7 +466,7 @@ def send_weekly_digest():
     users = cur.fetchall()
     for u in users:
         uid, name, email = u["id"], u["name"], u["email"]
-        cur.execute("SELECT COUNT(*), MIN(seconds), AVG(seconds) FROM results WHERE user_id = ? AND played_at >= ?", (uid, since))
+        cur.execute("SELECT COUNT(*), MIN(seconds), AVG(seconds) FROM results WHERE user_id = %s AND played_at >= %s", (uid, since))
         games, best, avg = cur.fetchone()
         if games and games > 0:
             body = f"Hi {name},\n\nWeekly Sudoku stats:\nGames: {games}\nBest: {int(best)}s\nAvg: {int(avg)}s"
