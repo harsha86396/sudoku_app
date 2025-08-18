@@ -1,5 +1,5 @@
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import psycopg
+from psycopg.rows import dict_row
 import os
 import logging
 
@@ -10,7 +10,7 @@ DB_URL = os.environ.get("DATABASE_URL")
 
 def init_db():
     logger.info("Initializing PostgreSQL database")
-    con = psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
+    con = psycopg.connect(DB_URL, row_factory=dict_row)
     cur = con.cursor()
 
     # Users
