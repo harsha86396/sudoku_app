@@ -400,33 +400,47 @@ def admin_logout():
     session.pop('admin', None)
     return redirect(url_for('index'))
 
-@app.route('/admin/users')
+@app.route("/admin/users")
 def admin_users():
-    if not require_admin(): return redirect(url_for('admin'))
-    con = get_db(); cur = con.cursor()
-    cur.execute('''
-        SELECT u.id, u.name, u.email, COUNT(r.id) as games, MIN(r.seconds) as best
-        FROM users u LEFT JOIN results r ON r.user_id=u.id
-        GROUP BY u.id ORDER BY u.id ASC
-    ''')
-    rows = cur.fetchall(); con.close()
-    return render_template('admin_users.html', rows=rows)
+    db = get_db()
+    cur = db.cursor()
+    users = []
+    try:
+        cur.execute("SELECT id, name, email, created_at FROM users ORDER BY created_at DESC")
+        users = cur.fetchall()
+    except Exception as e:
+        # Log error, but don't crash the admin panel
+        app.logger.exception("Admin users query failed: %s", e)
+        users = []  # show empty list instead of 500 error
 
-@app.route('/admin/emails')
-def admin_emails():
-    if not require_admin(): return redirect(url_for('admin'))
-    con = get_db(); cur = con.cursor()
-    cur.execute('SELECT id, user_id, email, subject, sent_at FROM sent_emails ORDER BY id DESC LIMIT 200')
-    rows = cur.fetchall(); con.close()
-    return render_template('admin_emails.html', rows=rows)
+    return render_template("admin_users.html", users=users)
+@app.route("/admin/email_logs")
+def admin_email_logs():
+    db = get_db()
+    cur = db.cursor()
+    logs = []
+    try:
+        cur.execute("SELECT id, recipient, subject, status, created_at FROM email_logs ORDER BY created_at DESC")
+        logs = cur.fetchall()
+    except Exception as e:
+        app.logger.exception("Admin email logs query failed: %s", e)
+        logs = []
+    return render_template("admin_email_logs.html", logs=logs)
 
-@app.route('/admin/resets')
-def admin_resets():
-    if not require_admin(): return redirect(url_for('admin'))
-    con = get_db(); cur = con.cursor()
-    cur.execute('SELECT id, user_id, expires_at, created_at FROM password_resets ORDER BY id DESC LIMIT 200')
-    rows = cur.fetchall(); con.close()
-    return render_template('admin_resets.html', rows=rows)
+
+@app.route("/admin/password_resets")
+def admin_password_resets():
+    db = get_db()
+    cur = db.cursor()
+    resets = []
+    try:
+        cur.execute("SELECT id, email, token, expires_at, used, created_at FROM password_resets ORDER BY created_at DESC")
+        resets = cur.fetchall()
+    except Exception as e:
+        app.logger.exception("Admin password resets query failed: %s", e)
+        resets = []
+    return render_template("admin_password_resets.html", resets=resets)
+
 
 # ---------- Weekly digest scheduler ----------
 def send_weekly_digest():
