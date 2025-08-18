@@ -254,6 +254,7 @@ def download_pdf():
     since = datetime.utcnow() - timedelta(days=7)
     cur.execute("SELECT seconds, played_at FROM results WHERE user_id = %s AND played_at >= %s", (session['user_id'], since))
     rows = cur.fetchall()
+    logger.info("Fetched %d results for PDF for user_id=%s: %s", len(rows), session['user_id'], rows)
     out_stream = io.BytesIO()
     generate_last7_pdf(user['name'], user['email'], rows, out_stream)
     out_stream.seek(0)
