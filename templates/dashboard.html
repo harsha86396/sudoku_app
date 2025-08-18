@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 {% block content %}
   <h1>Hello, {{ name }} 👋</h1>
-  <nav style="margin-bottom: 20px;">
-    <a href="{{ url_for('play') }}" style="margin-right: 10px;">🧩 Play Sudoku</a>
-    <a href="{{ url_for('leaderboard') }}" style="margin-right: 10px;">🏆 Leaderboard</a>
-    <a href="{{ url_for('download_pdf') }}" style="margin-right: 10px;">⬇ Download Last 7 Days (PDF)</a>
+  <nav>
+    <a href="{{ url_for('play') }}">🧩 Play Sudoku</a>
+    <a href="{{ url_for('leaderboard') }}">🏆 Leaderboard</a>
+    <a href="{{ url_for('download_pdf') }}">⬇ Download Last 7 Days (PDF)</a>
     <a href="{{ url_for('logout') }}">🚪 Logout</a>
   </nav>
   <p>Tip: Beat your best time to climb the leaderboard!</p>
