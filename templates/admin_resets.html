@@ -1,27 +1,27 @@
 {% extends 'base.html' %}
 {% block content %}
   <h1>Admin Dashboard</h1>
-  <nav style="margin-bottom: 20px;">
-    <a href="{{ url_for('admin_users') }}" style="margin-right: 10px;">Users</a>
-    <a href="{{ url_for('admin_email_logs') }}" style="margin-right: 10px;">Email Logs</a>
-    <a href="{{ url_for('admin_password_resets') }}" style="margin-right: 10px;">Password Resets</a>
+  <nav>
+    <a href="{{ url_for('admin_users') }}">Users</a>
+    <a href="{{ url_for('admin_email_logs') }}">Email Logs</a>
+    <a href="{{ url_for('admin_password_resets') }}">Password Resets</a>
     <a href="{{ url_for('logout') }}">Logout</a>
   </nav>
   <h2>Password Reset Attempts</h2>
   {% if resets %}
-    <table style="border-collapse: collapse; width: 100%;">
-      <tr style="background-color: #f2f2f2;">
-        <th style="border: 1px solid #ddd; padding: 8px;">ID</th>
-        <th style="border: 1px solid #ddd; padding: 8px;">User ID</th>
-        <th style="border: 1px solid #ddd; padding: 8px;">Expires At</th>
-        <th style="border: 1px solid #ddd; padding: 8px;">Created At</th>
+    <table>
+      <tr>
+        <th>ID</th>
+        <th>User ID</th>
+        <th>Expires At</th>
+        <th>Created At</th>
       </tr>
       {% for reset in resets %}
         <tr>
-          <td style="border: 1px solid #ddd; padding: 8px;">{{ reset.id }}</td>
-          <td style="border: 1px solid #ddd; padding: 8px;">{{ reset.user_id }}</td>
-          <td style="border: 1px solid #ddd; padding: 8px;">{{ reset.expires_at }}</td>
-          <td style="border: 1px solid #ddd; padding: 8px;">{{ reset.created_at }}</td>
+          <td>{{ reset.id }}</td>
+          <td>{{ reset.user_id }}</td>
+          <td>{{ reset.expires_at }}</td>
+          <td>{{ reset.created_at }}</td>
         </tr>
       {% endfor %}
     </table>
