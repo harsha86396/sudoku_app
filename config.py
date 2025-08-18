@@ -19,3 +19,9 @@ OTP_RATE_LIMIT_SECONDS = 60  # per email
 # Weekly digest
 DIGEST_ENABLED = True
 DIGEST_IST_TIME = "18:00"
+
+
+# Stable absolute database path
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE = os.environ.get('DATABASE_PATH') or os.path.join(BASE_DIR, 'sudoku.db')
