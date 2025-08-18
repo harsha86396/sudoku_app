@@ -1,6 +1,6 @@
 import os
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import psycopg
+from psycopg.rows import dict_row
 import random
 import io
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file, g
@@ -40,7 +40,7 @@ mail = Mail(app)
 # Safe init: auto create tables if missing
 def ensure_schema():
     logger.info("Ensuring schema for PostgreSQL database")
-    con = psycopg2.connect(os.environ.get("DATABASE_URL"), cursor_factory=RealDictCursor)
+    con = psycopg.connect(os.environ.get("DATABASE_URL"), row_factory=dict_row)
     cur = con.cursor()
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users (
@@ -114,7 +114,7 @@ def register():
         db.commit()
         session['msg'] = 'Registration successful! Please log in.'
         return redirect(url_for('index'))
-    except psycopg2.IntegrityError:
+    except psycopg.IntegrityError:
         session['err'] = 'Email already registered'
         return redirect(url_for('index'))
     except Exception as e:
