@@ -122,6 +122,7 @@ def register():
         password_hash = generate_password_hash(password)
         cur.execute("INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s)", (name, email, password_hash))
         db.commit()
+        session.pop('err', None)  # Clear any existing error
         session['msg'] = 'Registration successful! Please log in.'
         logger.info("Registration successful for %s", email)
         return redirect(url_for('index'))
@@ -136,10 +137,12 @@ def register():
 
 @app.route('/login', methods=['POST'])
 def login():
-    email = request.form.get('email')
-    password = request.form.get('password')
+    email = request.form.get('email', '').strip()
+    password = request.form.get('password', '').strip()
+    logger.info("Login attempt: email='%s', password='%s'", email, '***' if password else '')
     if not (email and password):
         session['err'] = 'Email and password are required'
+        logger.warning("Login failed: missing fields - email=%s, password=%s", email, '***' if password else '')
         return redirect(url_for('index'))
     try:
         db = get_db()
@@ -150,8 +153,11 @@ def login():
             session['user_id'] = user['id']
             session['name'] = user['name']
             session['hints_left'] = 3
+            session.pop('err', None)  # Clear any existing error
+            logger.info("Login successful for %s", email)
             return redirect(url_for('dashboard'))
         session['err'] = 'Invalid email or password'
+        logger.warning("Login failed: invalid email or password for %s", email)
         return redirect(url_for('index'))
     except Exception as e:
         logger.exception("Login failed: %s", e)
