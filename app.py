@@ -41,77 +41,6 @@ app.secret_key = config.SECRET_KEY
 app.teardown_appcontext(close_db)
 
 # ---------------------
-# Safe init_db (no data loss)
-# ---------------------
-def init_db():
-    con = get_db()
-    cur = con.cursor()
-
-    # --- Users ---
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        email TEXT UNIQUE,
-        password_hash TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-    cur.execute("PRAGMA table_info(users)")
-    cols = [row[1] for row in cur.fetchall()]
-    if "password_hash" not in cols:
-        cur.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
-    if "created_at" not in cols:
-        cur.execute("ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-
-    # --- Results ---
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS results (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        seconds INTEGER,
-        played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )
-    """)
-
-    # --- Email logs ---
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS email_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        recipient TEXT NOT NULL,
-        subject TEXT NOT NULL,
-        status TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
-    # --- Password resets ---
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS password_resets (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT NOT NULL,
-        token TEXT,
-        otp_hash TEXT,
-        expires_at TIMESTAMP NOT NULL,
-        used INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
-    # --- OTP rate limit ---
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS otp_rate_limit (
-        email TEXT PRIMARY KEY,
-        last_request_ts REAL
-    )
-    """)
-
-    con.commit()
-    con.close()
-    print("✅ Database initialized / upgraded")
-
-# ---------------------
 # Email sender
 # ---------------------
 def send_email(to_email, subject, body, user_id=None):
@@ -129,7 +58,7 @@ def send_email(to_email, subject, body, user_id=None):
             s.login(app.config['SMTP_USER'], app.config['SMTP_PASS'])
             s.send_message(msg)
 
-        # log email
+        # log email into email_logs
         con = get_db(); cur = con.cursor()
         cur.execute(
             'INSERT INTO email_logs(recipient,subject,status) VALUES(?,?,?)',
@@ -233,7 +162,80 @@ def dashboard():
     return render_template('dashboard.html', name=session['name'], title='Dashboard')
 
 # ---------------------
-# Game
+# Forgot / Reset Password
+# ---------------------
+def create_and_send_otp(user_id, email, name):
+    otp = f"{random.randint(0, 999999):06d}"
+    otp_hash = generate_password_hash(otp)
+    expires = datetime.utcnow() + timedelta(minutes=app.config.get('OTP_EXP_MINUTES',10))
+    con = get_db(); cur = con.cursor()
+    cur.execute('INSERT INTO password_resets(email, otp_hash, expires_at) VALUES(?,?,?)',
+                (email, otp_hash, expires))
+    con.commit(); con.close()
+    body = f"""Hi {name},
+Your OTP code to reset your password is: {otp}
+This code expires in {app.config.get('OTP_EXP_MINUTES',10)} minutes.
+"""
+    send_email(email, 'Sudoku Password Reset', body, user_id)
+    return True
+
+@app.route('/forgot_password', methods=['GET','POST'])
+def forgot_password():
+    if request.method == 'GET':
+        q,t = new_captcha()
+        return render_template('forgot_password.html', captcha_q=q, captcha_t=t)
+    email = request.form['email'].strip().lower()
+    cap_ans = request.form['captcha_answer']; cap_tok = request.form['captcha_token']
+    if not check_captcha(cap_tok, cap_ans):
+        q,t = new_captcha()
+        return render_template('forgot_password.html', err='CAPTCHA incorrect.', email=email, captcha_q=q, captcha_t=t)
+    ok, wait = rate_limit_ok(email)
+    if not ok:
+        q,t = new_captcha()
+        return render_template('forgot_password.html', err=f'Please wait {wait}s before requesting another OTP.', email=email, captcha_q=q, captcha_t=t)
+    con = get_db(); cur = con.cursor()
+    cur.execute('SELECT id,name FROM users WHERE email=?', (email,))
+    row = cur.fetchone()
+    if not row:
+        q,t = new_captcha()
+        return render_template('forgot_password.html', err='Email not found.', email=email, captcha_q=q, captcha_t=t)
+    create_and_send_otp(row['id'], email, row['name'])
+    return render_template('reset_password.html', email=email, msg='OTP sent. Check your inbox.')
+
+@app.route('/reset_password', methods=['POST'])
+def reset_password():
+    email = request.form['email'].strip().lower()
+    otp = request.form['otp'].strip()
+    password = request.form['password']
+    confirm = request.form['confirm']
+    if password != confirm:
+        return render_template('reset_password.html', email=email, err='Passwords do not match.')
+    con = get_db(); cur = con.cursor()
+    cur.execute('SELECT id,name FROM users WHERE email=?', (email,))
+    user = cur.fetchone()
+    if not user:
+        return render_template('reset_password.html', email=email, err='Email not found.')
+    uid, name = user['id'], user['name']
+    cur.execute('SELECT otp_hash, expires_at FROM password_resets WHERE email=? ORDER BY created_at DESC LIMIT 1', (email,))
+    pr = cur.fetchone()
+    if not pr:
+        return render_template('reset_password.html', email=email, err='No active OTP. Please request again.')
+    otp_hash, expires_at = pr['otp_hash'], pr['expires_at']
+    exp = datetime.fromisoformat(expires_at) if isinstance(expires_at, str) else expires_at
+    if datetime.utcnow() > exp:
+        return render_template('reset_password.html', email=email, err='OTP expired. Please request a new one.')
+    if not check_password_hash(otp_hash, otp):
+        return render_template('reset_password.html', email=email, err='Invalid OTP.')
+    new_hash = generate_password_hash(password)
+    cur.execute('UPDATE users SET password_hash=? WHERE id=?', (new_hash, uid))
+    cur.execute('DELETE FROM password_resets WHERE email=?', (email,))
+    con.commit(); con.close()
+    send_email(email, 'Password Changed', f'Hi {name}, your password was reset successfully.', uid)
+    q,t = new_captcha()
+    return render_template('index.html', msg='Password reset successful. Please log in.', captcha_q=q, captcha_t=t)
+
+# ---------------------
+# Game APIs
 # ---------------------
 @app.route('/play')
 def play():
@@ -285,6 +287,12 @@ def record_result():
     rank = 0
     for i, row in enumerate(rows, start=1):
         if row[0] == uid: rank = i; break
+    if seconds == best:
+        cur.execute('SELECT email,name FROM users WHERE id=?',(uid,))
+        row = cur.fetchone()
+        if row:
+            em, nm = row['email'], row['name']
+            send_email(em, '🎉 New Personal Best!', f'Congrats {nm}! New PB: {best}s. Keep it up!', uid)
     con.close()
     return jsonify({'status':'ok','best_time':best,'rank':rank})
 
@@ -298,6 +306,25 @@ def leaderboard():
     ''')
     rows = cur.fetchall(); con.close()
     return render_template('leaderboard.html', rows=rows, title='Leaderboard')
+
+@app.route('/download_history')
+def download_history():
+    if 'user_id' not in session: return redirect(url_for('index'))
+    uid = session['user_id']
+    con = get_db(); cur = con.cursor()
+    cur.execute('SELECT email,name FROM users WHERE id=?',(uid,))
+    row = cur.fetchone()
+    if not row:
+        con.close()
+        return redirect(url_for('index'))
+    email, name = row['email'], row['name']
+    since = datetime.utcnow() - timedelta(days=7)
+    cur.execute('SELECT seconds, played_at FROM results WHERE user_id=? AND played_at >= ? ORDER BY played_at DESC', (uid, since))
+    rows = cur.fetchall(); con.close()
+    buf = io.BytesIO()
+    generate_last7_pdf(name, email, rows, buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name='sudoku_last7.pdf', mimetype='application/pdf')
 
 # ---------------------
 # Admin
@@ -314,9 +341,15 @@ def admin():
         return redirect(url_for('admin'))
     return render_template('admin_login.html', err='Invalid admin credentials.')
 
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin', None)
+    return redirect(url_for('index'))
+
 @app.route("/admin/users")
 def admin_users():
     db = get_db(); cur = db.cursor()
+    users = []
     try:
         cur.execute("SELECT id, name, email, created_at FROM users ORDER BY created_at DESC")
         users = cur.fetchall()
@@ -328,6 +361,7 @@ def admin_users():
 @app.route("/admin/email_logs")
 def admin_email_logs():
     db = get_db(); cur = db.cursor()
+    logs = []
     try:
         cur.execute("SELECT id, recipient, subject, status, created_at FROM email_logs ORDER BY created_at DESC")
         logs = cur.fetchall()
@@ -339,8 +373,9 @@ def admin_email_logs():
 @app.route("/admin/password_resets")
 def admin_password_resets():
     db = get_db(); cur = db.cursor()
+    resets = []
     try:
-        cur.execute("SELECT id, email, token, expires_at, used, created_at FROM password_resets ORDER BY created_at DESC")
+        cur.execute("SELECT id, email, otp_hash, expires_at, created_at FROM password_resets ORDER BY created_at DESC")
         resets = cur.fetchall()
     except Exception as e:
         app.logger.exception("Admin password resets query failed: %s", e)
@@ -348,26 +383,25 @@ def admin_password_resets():
     return render_template("admin_password_resets.html", resets=resets)
 
 # ---------------------
-# Scheduler
+# Weekly digest scheduler
 # ---------------------
 def send_weekly_digest():
-    if not app.config.get('EMAIL_ENABLED') or not app.config.get('DIGEST_ENABLED'): return
+    if not app.config.get('EMAIL_ENABLED') or not app.config.get('DIGEST_ENABLED'): 
+        return
     con = get_db(); cur = con.cursor()
     since = datetime.utcnow() - timedelta(days=7)
-    cur.execute('SELECT id,name,email FROM users'); users = cur.fetchall()
+    cur.execute('SELECT id,name,email FROM users')
+    users = cur.fetchall()
     for u in users:
         uid, name, email = u['id'], u['name'], u['email']
         cur.execute('SELECT COUNT(*), MIN(seconds), AVG(seconds) FROM results WHERE user_id=? AND played_at >= ?', (uid, since))
         games, best, avg = cur.fetchone()
         if games and games > 0:
             body = f"""Hi {name},
-
 Your weekly Sudoku progress:
 - Games: {games}
 - Best: {int(best)}s
 - Average: {int(avg)}s
-
-Keep practicing!
 """
             send_email(email, 'Your Weekly Sudoku Progress 📊', body, uid)
     con.close()
@@ -382,16 +416,12 @@ def scheduler_thread():
 
 def setup_schedule():
     schedule.every().sunday.at(app.config.get('DIGEST_IST_TIME','18:00')).do(send_weekly_digest)
-    t = threading.Thread(target=scheduler_thread, daemon=True); t.start()
+    t = threading.Thread(target=scheduler_thread, daemon=True)
+    t.start()
 
 # ---------------------
-# Init
+# Startup
 # ---------------------
-try:
-    init_db()
-except Exception as e:
-    print("init_db error:", e)
-
 if not os.environ.get("DISABLE_SCHEDULER"):
     try:
         setup_schedule()
@@ -399,6 +429,4 @@ if not os.environ.get("DISABLE_SCHEDULER"):
         print("setup_schedule error:", e)
 
 if __name__ == '__main__':
-    init_db()
-    setup_schedule()
     app.run(debug=True)
