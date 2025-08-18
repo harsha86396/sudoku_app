@@ -3,12 +3,99 @@
 <head>
   <title>{{ config.APP_NAME }}</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    form { max-width: 400px; }
-    label { display: block; margin: 10px 0 5px; }
-    input { width: 100%; padding: 8px; margin-bottom: 10px; }
-    button { padding: 10px 20px; }
-    nav a { margin-right: 10px; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f5f5f5;
+      color: #333;
+      transition: all 0.3s;
+    }
+    body.dark {
+      background-color: #333;
+      color: #f5f5f5;
+    }
+    header, footer {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    nav a {
+      margin-right: 10px;
+      color: #007bff;
+      text-decoration: none;
+    }
+    nav a:hover {
+      text-decoration: underline;
+    }
+    body.dark nav a {
+      color: #66b0ff;
+    }
+    form {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+    }
+    input, button, select {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    body.dark input, body.dark button, body.dark select {
+      background-color: #444;
+      color: #f5f5f5;
+      border-color: #666;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    body.dark button {
+      background-color: #66b0ff;
+    }
+    body.dark button:hover {
+      background-color: #3385ff;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 800px;
+      margin: 20px auto;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    body.dark th {
+      background-color: #555;
+    }
+    body.dark td {
+      border-color: #666;
+    }
+    .error {
+      color: #d32f2f;
+    }
+    body.dark .error {
+      color: #ef5350;
+    }
+    .success {
+      color: #2e7d32;
+    }
+    body.dark .success {
+      color: #4caf50;
+    }
   </style>
 </head>
 <body>
@@ -26,6 +113,10 @@
     <script>
       function toggleTheme() {
         document.body.classList.toggle('dark');
+        localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+      }
+      if (localStorage.getItem('theme') === 'dark') {
+        document.body.classList.add('dark');
       }
     </script>
   {% endblock %}
