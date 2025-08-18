@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
   <h1>Welcome to {{ config.APP_NAME }}</h1>
+  <p>Theme: <span id="theme">Light</span></p>
   {% if msg %}
     <p class="success">{{ msg }}</p>
   {% endif %}
