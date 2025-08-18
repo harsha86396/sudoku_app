@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
   <h1>🧩 Sudoku</h1>
-  <p>Theme: <span id="theme">Dark</span> • Hints left: <span id="hints-left">{{ session.get('hints_left', 3) }}</span> • Time: <span id="timer">0s</span></p>
+  <p>Theme: <span id="theme">Light</span> • Hints left: <span id="hints-left">{{ session.get('hints_left', 3) }}</span> • Time: <span id="timer">0s</span></p>
   <form method="POST" action="{{ url_for('play') }}">
     <label for="difficulty">Difficulty:</label>
     <select id="difficulty" name="difficulty">
@@ -13,7 +13,7 @@
     <button type="button" onclick="getHint()">Get Hint</button>
     <button type="button" onclick="restart()">Restart</button>
   </form>
-  <div id="sudoku-grid" style="margin: 20px auto; display: grid; grid-template-columns: repeat(9, 40px); gap: 1px; max-width: 360px; background-color: #ddd;">
+  <div id="sudoku-grid" style="margin: 20px auto; display: grid; grid-template-columns: repeat(9, 40px); gap: 1px; max-width: 360px;">
     {% for r in range(9) %}
       {% for c in range(9) %}
         <input type="text" maxlength="1" 
@@ -84,7 +84,7 @@
             const index = data.row * 9 + data.col;
             inputs[index].value = data.value;
             inputs[index].setAttribute('readonly', true);
-            inputs[index].style.backgroundColor = '#f0f0f0';
+            inputs[index].style.backgroundColor = document.body.classList.contains('dark') ? '#555' : '#f0f0f0';
             document.getElementById('hints-left').textContent = data.hints_left;
           }
         });
@@ -107,7 +107,5 @@
         activeInput.value = '';
       }
     }
-
-    document.getElementById('theme').textContent = localStorage.getItem('theme') === 'dark' ? 'Dark' : 'Light';
   </script>
 {% endblock %}
