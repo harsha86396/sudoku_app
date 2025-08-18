@@ -1,6 +1,4 @@
 import os
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE = os.environ.get('DATABASE_PATH') or os.path.join('/mnt/disk', 'sudoku.db')
 
 # App Config
 EMAIL_ENABLED = os.environ.get('EMAIL_ENABLED', 'True') == 'True'
