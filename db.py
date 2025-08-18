@@ -1,5 +1,5 @@
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import psycopg
+from psycopg.rows import dict_row
 from flask import g
 import os
 import logging
@@ -12,7 +12,7 @@ DB_URL = os.environ.get("DATABASE_URL")
 def get_db():
     if "db" not in g:
         logger.info("Connecting to PostgreSQL database")
-        g.db = psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
+        g.db = psycopg.connect(DB_URL, row_factory=dict_row)
     return g.db
 
 def close_db(e=None):
