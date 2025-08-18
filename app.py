@@ -105,8 +105,8 @@ def register():
     email = request.form.get('email', '').strip()
     password = request.form.get('password', '').strip()
     captcha = request.form.get('captcha', '').strip()
-    logger.info("Register attempt: name='%s', email='%s', password='%s', captcha='%s', session_captcha='%s'", 
-                name, email, '***' if password else '', captcha, session.get('captcha'))
+    logger.info("Register attempt: name='%s', email='%s', password='%s', captcha='%s', session_captcha='%s', session=%s", 
+                name, email, '***' if password else '', captcha, session.get('captcha'), dict(session))
     if not (name and email and password and captcha):
         session['err'] = 'All fields are required'
         logger.warning("Registration failed: missing fields - name=%s, email=%s, password=%s, captcha=%s", 
@@ -222,12 +222,17 @@ def submit():
 def leaderboard():
     db = get_db()
     cur = db.cursor()
-    cur.execute("""
-        SELECT u.name, MIN(r.seconds) as best, COUNT(r.id) as games
-        FROM users u LEFT JOIN results r ON u.id = r.user_id
-        GROUP BY u.id ORDER BY best ASC LIMIT 10
-    """)
-    rows = cur.fetchall()
+    try:
+        cur.execute("""
+            SELECT u.name, MIN(r.seconds) as best, COUNT(r.id) as games
+            FROM users u LEFT JOIN results r ON u.id = r.user_id
+            GROUP BY u.id ORDER BY best ASC NULLS LAST LIMIT 10
+        """)
+        rows = cur.fetchall()
+        logger.info("Fetched %d leaderboard rows", len(rows))
+    except Exception as e:
+        logger.exception("Leaderboard query failed: %s", e)
+        rows = []
     return render_template('leaderboard.html', rows=rows)
 
 @app.route('/download_pdf')
@@ -251,6 +256,7 @@ def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email')
         captcha = request.form.get('captcha')
+        logger.info("Forgot password attempt: email=%s, captcha=%s, session_captcha=%s", email, captcha, session.get('captcha'))
         if not (email and captcha):
             session['err'] = 'Email and CAPTCHA are required'
             return redirect(url_for('forgot_password'))
