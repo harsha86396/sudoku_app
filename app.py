@@ -96,6 +96,7 @@ def index():
     err = session.pop('err', None)
     captcha_q = f"{random.randint(1,10)} + {random.randint(1,10)}"
     session['captcha'] = str(eval(captcha_q))
+    logger.info("Generated CAPTCHA: %s, session_captcha=%s", captcha_q, session['captcha'])
     return render_template('index.html', msg=msg, err=err, captcha_q=captcha_q)
 
 @app.route('/register', methods=['POST'])
@@ -104,14 +105,16 @@ def register():
     email = request.form.get('email', '').strip()
     password = request.form.get('password', '').strip()
     captcha = request.form.get('captcha', '').strip()
-    logger.info("Register attempt: name=%s, email=%s, captcha=%s, session_captcha=%s", name, email, captcha, session.get('captcha'))
+    logger.info("Register attempt: name='%s', email='%s', password='%s', captcha='%s', session_captcha='%s'", 
+                name, email, '***' if password else '', captcha, session.get('captcha'))
     if not (name and email and password and captcha):
         session['err'] = 'All fields are required'
-        logger.warning("Registration failed: missing fields")
+        logger.warning("Registration failed: missing fields - name=%s, email=%s, password=%s, captcha=%s", 
+                       name, email, '***' if password else '', captcha)
         return redirect(url_for('index'))
     if captcha != session.get('captcha'):
         session['err'] = 'Invalid CAPTCHA'
-        logger.warning("Registration failed: invalid CAPTCHA")
+        logger.warning("Registration failed: invalid CAPTCHA - received=%s, expected=%s", captcha, session.get('captcha'))
         return redirect(url_for('index'))
     try:
         db = get_db()
@@ -387,7 +390,7 @@ def logout():
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
     if session.get('admin'):
-        return redirect(url_for('admin_users'))
+        return redirect(url_for('admin_dashboard'))
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
@@ -395,11 +398,18 @@ def admin():
         if email == app.config.get('ADMIN_EMAIL') and password == app.config.get('ADMIN_PASSWORD'):
             session['admin'] = True
             logger.info("Admin login successful")
-            return redirect(url_for('admin_users'))
+            return redirect(url_for('admin_dashboard'))
         session['err'] = 'Invalid admin credentials'
         logger.warning("Admin login failed: invalid credentials")
         return redirect(url_for('admin'))
     return render_template('admin_login.html')
+
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    if not session.get('admin'):
+        logger.warning("Unauthorized access to /admin/dashboard")
+        return redirect(url_for('admin'))
+    return render_template('admin_dashboard.html')
 
 @app.route('/admin/users')
 def admin_users():
@@ -462,7 +472,8 @@ def debug_db_check():
     user_count = cur.fetchone()['user_count']
     return jsonify({
         'db_url': os.environ.get("DATABASE_URL", "Not set"),
-        'user_count': user_count
+        'user_count': user_count,
+        'session': dict(session)
     })
 
 # Email sending
