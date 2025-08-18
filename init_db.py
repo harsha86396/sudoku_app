@@ -1,16 +1,19 @@
-import sqlite3, os
+import sqlite3
+import os
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "sudoku.db")
-
+DB_PATH = os.environ.get("DATABASE_PATH") or os.path.join('/mnt/disk', 'sudoku.db')
 
 def init_db():
+    logger.info("Initializing database at %s", DB_PATH)
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
 
-    # ----------------------------
     # Users
-    # ----------------------------
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,9 +24,7 @@ def init_db():
     )
     """)
 
-    # ----------------------------
     # Results (game plays)
-    # ----------------------------
     cur.execute("""
     CREATE TABLE IF NOT EXISTS results (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,9 +35,7 @@ def init_db():
     )
     """)
 
-    # ----------------------------
-    # Email logs (for tracking sent emails)
-    # ----------------------------
+    # Email logs
     cur.execute("""
     CREATE TABLE IF NOT EXISTS email_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,9 +46,7 @@ def init_db():
     )
     """)
 
-    # ----------------------------
-    # Password resets (OTP / tokens)
-    # ----------------------------
+    # Password resets
     cur.execute("""
     CREATE TABLE IF NOT EXISTS password_resets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,9 +59,7 @@ def init_db():
     )
     """)
 
-    # ----------------------------
     # OTP rate limit
-    # ----------------------------
     cur.execute("""
     CREATE TABLE IF NOT EXISTS otp_rate_limit (
         email TEXT PRIMARY KEY,
@@ -74,8 +69,7 @@ def init_db():
 
     con.commit()
     con.close()
-    print("✅ Database initialized successfully at", DB_PATH)
-
+    logger.info("Database initialized successfully at %s", DB_PATH)
 
 if __name__ == "__main__":
     init_db()
