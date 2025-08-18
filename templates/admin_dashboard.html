@@ -1,12 +1,29 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="card">
   <h1>Admin Dashboard</h1>
-  <nav class="small">
-    <a href="/admin/users">Users</a> ·
-    <a href="/admin/emails">Email Logs</a> ·
-    <a href="/admin/resets">Password Resets</a> ·
-    <a href="/admin/logout">Logout</a>
+  <nav style="margin-bottom: 20px;">
+    <a href="{{ url_for('admin_users') }}" style="margin-right: 10px;">Users</a>
+    <a href="{{ url_for('admin_email_logs') }}" style="margin-right: 10px;">Email Logs</a>
+    <a href="{{ url_for('admin_password_resets') }}" style="margin-right: 10px;">Password Resets</a>
+    <a href="{{ url_for('logout') }}">Logout</a>
   </nav>
-</div>
+  <h2>Users</h2>
+  <table style="border-collapse: collapse; width: 100%;">
+    <tr style="background-color: #f2f2f2;">
+      <th style="border: 1px solid #ddd; padding: 8px;">ID</th>
+      <th style="border: 1px solid #ddd; padding: 8px;">Name</th>
+      <th style="border: 1px solid #ddd; padding: 8px;">Email</th>
+      <th style="border: 1px solid #ddd; padding: 8px;">Games</th>
+      <th style="border: 1px solid #ddd; padding: 8px;">Best(s)</th>
+    </tr>
+    {% for u in rows %}
+      <tr>
+        <td style="border: 1px solid #ddd; padding: 8px;">{{ u.id }}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">{{ u.name }}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">{{ u.email }}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">{{ u.games }}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">{{ u.best or '-' }}</td>
+      </tr>
+    {% endfor %}
+  </table>
 {% endblock %}
