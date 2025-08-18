@@ -40,7 +40,11 @@ mail = Mail(app)
 # Safe init: auto create tables if missing
 def ensure_schema():
     logger.info("Ensuring schema for PostgreSQL database")
-    con = psycopg.connect(os.environ.get("DATABASE_URL"), row_factory=dict_row)
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        logger.error("DATABASE_URL environment variable is not set")
+        raise ValueError("DATABASE_URL environment variable is not set")
+    con = psycopg.connect(db_url, row_factory=dict_row)
     cur = con.cursor()
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users (
