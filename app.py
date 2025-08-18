@@ -11,9 +11,7 @@ import config as config
 
 
 # --- Stable DB helpers (absolute path + per-request connection) ---
-import sqlite3
 from flask import g
-import os
 
 DB_PATH = getattr(config, "DATABASE", None)
 if not DB_PATH:
@@ -35,8 +33,17 @@ def close_db(e=None):
             pass
         db.close()
 
+# ---------------------
+# Create Flask app
+# ---------------------
+app = Flask(__name__)
+app.config.from_object(config)
+app.secret_key = config.SECRET_KEY
+
+# ✅ Register teardown *after* app is created
 app.teardown_appcontext(close_db)
 # --- end DB helpers ---
+
 
 app = Flask(__name__)
 app.config.from_object(config)
