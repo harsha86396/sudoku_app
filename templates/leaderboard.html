@@ -2,19 +2,19 @@
 {% block content %}
   <h1>🏆 Leaderboard</h1>
   <h2>Fastest all-time bests</h2>
-  <table style="border-collapse: collapse; width: 100%;">
-    <tr style="background-color: #f2f2f2;">
-      <th style="border: 1px solid #ddd; padding: 8px;">#</th>
-      <th style="border: 1px solid #ddd; padding: 8px;">Name</th>
-      <th style="border: 1px solid #ddd; padding: 8px;">Best (s)</th>
-      <th style="border: 1px solid #ddd; padding: 8px;">Games</th>
+  <table>
+    <tr>
+      <th>#</th>
+      <th>Name</th>
+      <th>Best (s)</th>
+      <th>Games</th>
     </tr>
     {% for i, row in enumerate(rows, start=1) %}
       <tr>
-        <td style="border: 1px solid #ddd; padding: 8px;">{{ i }}</td>
-        <td style="border: 1px solid #ddd; padding: 8px;">{{ row.name }}</td>
-        <td style="border: 1px solid #ddd; padding: 8px;">{{ row.best }}</td>
-        <td style="border: 1px solid #ddd; padding: 8px;">{{ row.games }}</td>
+        <td>{{ i }}</td>
+        <td>{{ row.name }}</td>
+        <td>{{ row.best or '-' }}</td>
+        <td>{{ row.games }}</td>
       </tr>
     {% endfor %}
   </table>
