@@ -1,13 +1,15 @@
 import sqlite3
+import os
 
-# Change this path if your DB file is in another location
-DB_FILE = "sudoku.db"
+# Stable DB path (same logic as config.py)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_FILE = os.environ.get("DATABASE_PATH") or os.path.join(BASE_DIR, "sudoku.db")
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
 
-    # Create users table
+    # Users table
     c.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -17,7 +19,7 @@ def init_db():
     )
     """)
 
-    # Create scores table
+    # Scores table (linked to users)
     c.execute("""
     CREATE TABLE IF NOT EXISTS scores (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,6 +27,29 @@ def init_db():
         time_taken INTEGER NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+    """)
+
+    # Email logs table
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS email_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        recipient TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        status TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    # Password resets table
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS password_resets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL,
+        token TEXT NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        used INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
 
