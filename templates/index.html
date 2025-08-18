@@ -1,28 +1,53 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="card">
-  <h1>Welcome</h1>
-  {% if msg %}<div class="alert">{{ msg }}</div>{% endif %}
-  {% if err %}<div class="alert err">{{ err }}</div>{% endif %}
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-    <form action="/register" method="post" class="card">
-      <h2>Create account</h2>
-      <label>Name</label><input name="name" required>
-      <br><label>Email</label><input name="email" type="email" required>
-      <br><label>Password</label><input name="password" type="password" required>
-      <br><label>CAPTCHA: {{ captcha_q }}</label><input name="captcha_answer" required>
-      <input type="hidden" name="captcha_token" value="{{ captcha_t }}">
-      <br><button class="btn" type="submit">Register</button>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sudoku - Login / Register</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .error { color: red; }
+        .success { color: green; }
+        form { max-width: 400px; }
+        label { display: block; margin: 10px 0 5px; }
+        input { width: 100%; padding: 8px; margin-bottom: 10px; }
+        button { padding: 10px 20px; }
+    </style>
+    <script>
+        function trimFormInputs() {
+            document.querySelectorAll('input').forEach(input => {
+                input.value = input.value.trim();
+            });
+        }
+    </script>
+</head>
+<body>
+    <h1>Sudoku App</h1>
+    {% if err %}
+    <p class="error">{{ err }}</p>
+    {% endif %}
+    {% if msg %}
+    <p class="success">{{ msg }}</p>
+    {% endif %}
+    <h2>Register</h2>
+    <form method="POST" action="{{ url_for('register') }}" onsubmit="trimFormInputs()">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required>
+        <label for="captcha">CAPTCHA: {{ captcha_q }} = </label>
+        <input type="text" id="captcha" name="captcha" required>
+        <button type="submit">Register</button>
     </form>
-    <form action="/login" method="post" class="card">
-      <h2>Login</h2>
-      <label>Email</label><input name="email" type="email" required>
-      <br><label>Password</label><input name="password" type="password" required>
-      <br><button class="btn secondary" type="submit">Login</button>
-      <div class="small" style="margin-top:8px">
-        <a href="/forgot_password">Forgot password?</a> · <a href="/admin">Admin</a>
-      </div>
+    <h2>Login</h2>
+    <form method="POST" action="{{ url_for('login') }}" onsubmit="trimFormInputs()">
+        <label for="login_email">Email:</label>
+        <input type="email" id="login_email" name="email" required>
+        <label for="login_password">Password:</label>
+        <input type="password" id="login_password" name="password" required>
+        <button type="submit">Login</button>
     </form>
-  </div>
-</div>
-{% endblock %}
+    <p><a href="{{ url_for('forgot_password') }}">Forgot Password?</a></p>
+    <p><a href="{{ url_for('admin') }}">Admin Login</a></p>
+</body>
+</html>
