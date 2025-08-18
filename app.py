@@ -12,6 +12,7 @@ import config as config
 
 # --- Stable DB helpers (absolute path + per-request connection) ---
 from flask import g
+from db import get_db, close_db
 
 DB_PATH = getattr(config, "DATABASE", None)
 if not DB_PATH:
