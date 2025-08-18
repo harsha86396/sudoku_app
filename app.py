@@ -3,15 +3,13 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import random
 import io
-import smtplib
-import ssl
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file, g
+from flask_mail import Mail, Message
+from werkzeug.security import generate_password_hash, check_password_hash
 import threading
 import schedule
 import time as time_mod
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file, g
-from werkzeug.security import generate_password_hash, check_password_hash
-from email.mime.text import MIMEText
 import logging
 
 # utils
@@ -29,6 +27,15 @@ app = Flask(__name__)
 app.config.from_object(config)
 app.secret_key = config.SECRET_KEY
 app.teardown_appcontext(close_db)
+
+# Flask-Mail configuration
+app.config['MAIL_SERVER'] = config.SMTP_SERVER
+app.config['MAIL_PORT'] = config.SMTP_PORT
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = config.SMTP_USER
+app.config['MAIL_PASSWORD'] = config.SMTP_PASS
+app.config['MAIL_DEFAULT_SENDER'] = config.SMTP_USER
+mail = Mail(app)
 
 # Safe init: auto create tables if missing
 def ensure_schema():
@@ -262,8 +269,11 @@ def forgot_password():
                         (email, now, now))
             db.commit()
             if app.config.get('EMAIL_ENABLED'):
-                body = f"Your OTP for password reset is {otp}. It expires in {config.OTP_EXP_MINUTES} minutes."
-                send_email(email, "Sudoku Password Reset OTP", body, user['id'])
+                msg = Message("Sudoku Password Reset OTP", recipients=[email])
+                msg.body = f"Your OTP for password reset is {otp}. It expires in {config.OTP_EXP_MINUTES} minutes."
+                mail.send(msg)
+                cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", (email, "Sudoku Password Reset OTP", 'sent'))
+                db.commit()
             session['reset_email'] = email
             session['reset_token'] = token
             session['msg'] = 'OTP sent to your email'
@@ -306,7 +316,6 @@ def reset_password():
             cur.execute("UPDATE password_resets SET used = 1 WHERE token = %s", (token,))
             db.commit()
             session.pop('reset_email', None)
-            session.pop('reset_token', None)
             session['msg'] = 'Password reset successfully! Please log in.'
             return redirect(url_for('index'))
         except Exception as e:
@@ -347,8 +356,11 @@ def resend_otp():
                     (email, now, now))
         db.commit()
         if app.config.get('EMAIL_ENABLED'):
-            body = f"Your new OTP for password reset is {otp}. It expires in {config.OTP_EXP_MINUTES} minutes."
-            send_email(email, "Sudoku Password Reset OTP", body, user['id'])
+            msg = Message("Sudoku Password Reset OTP", recipients=[email])
+            msg.body = f"Your new OTP for password reset is {otp}. It expires in {config.OTP_EXP_MINUTES} minutes."
+            mail.send(msg)
+            cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", (email, "Sudoku Password Reset OTP", 'sent'))
+            db.commit()
         session['reset_token'] = token
         session['msg'] = 'New OTP sent to your email'
         return redirect(url_for('reset_password'))
@@ -434,16 +446,10 @@ def debug_db_check():
 def send_email(recipient, subject, body, user_id):
     if not app.config.get('EMAIL_ENABLED'):
         return
-    msg = MIMEText(body)
-    msg['Subject'] = subject
-    msg['From'] = app.config.get('SMTP_USER')
-    msg['To'] = recipient
     try:
-        context = ssl.create_default_context()
-        with smtplib.SMTP(app.config.get('SMTP_SERVER'), app.config.get('SMTP_PORT')) as server:
-            server.starttls(context=context)
-            server.login(app.config.get('SMTP_USER'), app.config.get('SMTP_PASS'))
-            server.sendmail(app.config.get('SMTP_USER'), recipient, msg.as_string())
+        msg = Message(subject, recipients=[recipient])
+        msg.body = body
+        mail.send(msg)
         db = get_db()
         cur = db.cursor()
         cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", (recipient, subject, 'sent'))
