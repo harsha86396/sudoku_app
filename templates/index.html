@@ -8,7 +8,7 @@
     <p class="error">{{ err }}</p>
   {% endif %}
   <h2>Create account</h2>
-  <form method="POST" action="{{ url_for('register') }}" onsubmit="validateForm(event)">
+  <form method="POST" action="{{ url_for('register') }}" onsubmit="return validateForm(event, 'register')">
     <label for="name">Name:</label>
     <input type="text" id="name" name="name" required>
     <label for="email">Email:</label>
@@ -20,7 +20,7 @@
     <button type="submit">Register</button>
   </form>
   <h2>Login</h2>
-  <form method="POST" action="{{ url_for('login') }}" onsubmit="validateForm(event)">
+  <form method="POST" action="{{ url_for('login') }}" onsubmit="return validateForm(event, 'login')">
     <label for="login_email">Email:</label>
     <input type="email" id="login_email" name="email" required>
     <label for="login_password">Password:</label>
@@ -31,21 +31,28 @@
     <a href="{{ url_for('forgot_password') }}">Forgot password?</a> · 
     <a href="{{ url_for('admin') }}">Admin</a>
   </p>
-  {% block scripts %}
-    <script>
-      function validateForm(event) {
-        event.preventDefault();
-        const form = event.target;
-        document.querySelectorAll('input').forEach(input => {
-          input.value = input.value.trim();
-          if (!input.value) {
-            alert('All fields are required');
-            event.preventDefault();
-            return;
-          }
-        });
+{% endblock %}
+{% block scripts %}
+  <script>
+    function validateForm(event, formType) {
+      event.preventDefault();
+      const form = event.target;
+      const inputs = formType === 'register' 
+        ? [form.querySelector('#name'), form.querySelector('#email'), form.querySelector('#password'), form.querySelector('#captcha')]
+        : [form.querySelector('#login_email'), form.querySelector('#login_password')];
+      let valid = true;
+      inputs.forEach(input => {
+        if (!input) return;
+        input.value = input.value.trim();
+        if (!input.value) {
+          valid = false;
+          alert('All fields are required');
+        }
+      });
+      if (valid) {
         form.submit();
       }
-    </script>
-  {% endblock %}
+      return valid;
+    }
+  </script>
 {% endblock %}
