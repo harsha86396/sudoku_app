@@ -253,7 +253,7 @@ def download_pdf():
     user = cur.fetchone()
     since = datetime.utcnow() - timedelta(days=7)
     cur.execute("SELECT seconds, played_at FROM results WHERE user_id = %s AND played_at >= %s", (session['user_id'], since))
-    rows = cur.fetchall()
+    rows = [(row['seconds'], row['played_at']) for row in cur.fetchall()]  # Convert to list of tuples
     logger.info("Fetched %d results for PDF for user_id=%s: %s", len(rows), session['user_id'], rows)
     out_stream = io.BytesIO()
     generate_last7_pdf(user['name'], user['email'], rows, out_stream)
@@ -263,54 +263,74 @@ def download_pdf():
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
-        email = request.form.get('email')
-        captcha = request.form.get('captcha')
-        logger.info("Forgot password attempt: email=%s, captcha=%s, session_captcha=%s", email, captcha, session.get('captcha'))
+        email = request.form.get('email', '').strip()
+        captcha = request.form.get('captcha', '').strip()
+        logger.info("Forgot password attempt: email='%s', captcha='%s', session_captcha='%s'", email, captcha, session.get('captcha'))
         if not (email and captcha):
             session['err'] = 'Email and CAPTCHA are required'
+            logger.warning("Forgot password failed: missing fields - email=%s, captcha=%s", email, captcha)
             return redirect(url_for('forgot_password'))
         if captcha != session.get('captcha'):
             session['err'] = 'Invalid CAPTCHA'
+            logger.warning("Forgot password failed: invalid CAPTCHA - received=%s, expected=%s", captcha, session.get('captcha'))
             return redirect(url_for('forgot_password'))
-        db = get_db()
-        cur = db.cursor()
-        cur.execute("SELECT last_request_ts FROM otp_rate_limit WHERE email = %s", (email,))
-        last_request = cur.fetchone()
-        now = time_mod.time()
-        if last_request and now - last_request['last_request_ts'] < config.OTP_RATE_LIMIT_SECONDS:
-            session['err'] = 'Please wait before requesting another OTP'
-            return redirect(url_for('forgot_password'))
-        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
-        user = cur.fetchone()
-        if not user:
-            session['err'] = 'Email not found'
-            return redirect(url_for('forgot_password'))
-        otp = ''.join([str(random.randint(0,9)) for _ in range(6)])
-        otp_hash = generate_password_hash(otp)
-        expires_at = datetime.utcnow() + timedelta(minutes=config.OTP_EXP_MINUTES)
-        token = os.urandom(16).hex()
         try:
-            cur.execute("INSERT INTO password_resets (user_id, token, otp_hash, expires_at) VALUES (%s, %s, %s, %s)", 
-                        (user['id'], token, otp_hash, expires_at))
-            cur.execute("INSERT INTO otp_rate_limit (email, last_request_ts) VALUES (%s, %s) ON CONFLICT (email) UPDATE SET last_request_ts = %s", 
-                        (email, now, now))
-            db.commit()
-            if app.config.get('EMAIL_ENABLED'):
-                msg = Message("Sudoku Password Reset OTP", recipients=[email])
-                msg.body = f"Your OTP for password reset is {otp}. It expires in {config.OTP_EXP_MINUTES} minutes."
-                mail.send(msg)
-                cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", (email, "Sudoku Password Reset OTP", 'sent'))
+            db = get_db()
+            cur = db.cursor()
+            cur.execute("SELECT last_request_ts FROM otp_rate_limit WHERE email = %s", (email,))
+            last_request = cur.fetchone()
+            now = time_mod.time()
+            if last_request and now - last_request['last_request_ts'] < config.OTP_RATE_LIMIT_SECONDS:
+                session['err'] = 'Please wait before requesting another OTP'
+                logger.warning("Forgot password failed: rate limit exceeded for %s", email)
+                return redirect(url_for('forgot_password'))
+            cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+            user = cur.fetchone()
+            if not user:
+                session['err'] = 'Email not found'
+                logger.warning("Forgot password failed: email not found - %s", email)
+                return redirect(url_for('forgot_password'))
+            otp = ''.join([str(random.randint(0,9)) for _ in range(6)])
+            otp_hash = generate_password_hash(otp)
+            expires_at = datetime.utcnow() + timedelta(minutes=config.OTP_EXP_MINUTES)
+            token = os.urandom(16).hex()
+            try:
+                cur.execute("INSERT INTO password_resets (user_id, token, otp_hash, expires_at) VALUES (%s, %s, %s, %s)", 
+                            (user['id'], token, otp_hash, expires_at))
+                cur.execute("INSERT INTO otp_rate_limit (email, last_request_ts) VALUES (%s, %s) ON CONFLICT (email) UPDATE SET last_request_ts = %s", 
+                            (email, now, now))
                 db.commit()
-            session['reset_email'] = email
-            session['reset_token'] = token
-            session['msg'] = 'OTP sent to your email'
-            return redirect(url_for('reset_password'))
+                if app.config.get('EMAIL_ENABLED'):
+                    msg = Message("Sudoku Password Reset OTP", recipients=[email])
+                    msg.body = f"Your OTP for password reset is {otp}. It expires in {config.OTP_EXP_MINUTES} minutes."
+                    logger.info("Attempting to send OTP email to %s", email)
+                    mail.send(msg)
+                    cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", 
+                                (email, "Sudoku Password Reset OTP", 'sent'))
+                    db.commit()
+                    logger.info("OTP email sent to %s", email)
+                else:
+                    logger.warning("EMAIL_ENABLED is False, skipping email for %s", email)
+                session['reset_email'] = email
+                session['reset_token'] = token
+                session['msg'] = 'OTP sent to your email'
+                logger.info("Forgot password successful: redirecting to reset_password for %s", email)
+                return redirect(url_for('reset_password'))
+            except Exception as e:
+                db.rollback()
+                logger.exception("Forgot password failed: %s", e)
+                cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", 
+                            (email, "Sudoku Password Reset OTP", f'failed: {str(e)}'))
+                db.commit()
+                session['err'] = 'Failed to send OTP'
+                return redirect(url_for('forgot_password'))
         except Exception as e:
-            logger.exception("Forgot password failed: %s", e)
-            session['err'] = 'Failed to send OTP'
+            logger.exception("Forgot password query failed: %s", e)
+            session['err'] = 'Failed to process request'
             return redirect(url_for('forgot_password'))
     captcha_q = f"{random.randint(1,10)} + {random.randint(1,10)}"
     session['captcha'] = str(eval(captcha_q))
+    logger.info("Generated CAPTCHA for forgot_password: %s, session_captcha=%s", captcha_q, session['captcha'])
     return render_template('forgot_password.html', captcha_q=captcha_q)
 
 @app.route('/reset_password', methods=['GET', 'POST'])
@@ -321,11 +341,14 @@ def reset_password():
         otp = request.form.get('otp')
         password = request.form.get('password')
         confirm = request.form.get('confirm')
+        logger.info("Reset password attempt: email='%s', otp='%s'", email, otp)
         if not (email and token and otp and password and confirm):
             session['err'] = 'All fields are required'
+            logger.warning("Reset password failed: missing fields")
             return redirect(url_for('reset_password'))
         if password != confirm:
             session['err'] = 'Passwords do not match'
+            logger.warning("Reset password failed: passwords do not match")
             return redirect(url_for('reset_password'))
         db = get_db()
         cur = db.cursor()
@@ -333,9 +356,11 @@ def reset_password():
         reset = cur.fetchone()
         if not reset or reset['expires_at'] < datetime.utcnow():
             session['err'] = 'Invalid or expired OTP'
+            logger.warning("Reset password failed: invalid or expired token")
             return redirect(url_for('reset_password'))
         if not check_password_hash(reset['otp_hash'], otp):
             session['err'] = 'Invalid OTP'
+            logger.warning("Reset password failed: invalid OTP")
             return redirect(url_for('reset_password'))
         try:
             password_hash = generate_password_hash(password)
@@ -345,12 +370,14 @@ def reset_password():
             session.pop('reset_email', None)
             session.pop('reset_token', None)
             session['msg'] = 'Password reset successfully! Please log in.'
+            logger.info("Password reset successful for %s", email)
             return redirect(url_for('index'))
         except Exception as e:
             logger.exception("Reset password failed: %s", e)
             session['err'] = 'Failed to reset password'
             return redirect(url_for('reset_password'))
     if not session.get('reset_email'):
+        logger.warning("Reset password accessed without reset_email in session")
         return redirect(url_for('forgot_password'))
     return render_template('reset_password.html', email=session.get('reset_email'))
 
@@ -358,6 +385,7 @@ def reset_password():
 def resend_otp():
     email = session.get('reset_email')
     if not email:
+        logger.warning("Resend OTP accessed without reset_email in session")
         return redirect(url_for('forgot_password'))
     db = get_db()
     cur = db.cursor()
@@ -366,11 +394,13 @@ def resend_otp():
     now = time_mod.time()
     if last_request and now - last_request['last_request_ts'] < config.OTP_RATE_LIMIT_SECONDS:
         session['err'] = 'Please wait before requesting another OTP'
+        logger.warning("Resend OTP failed: rate limit exceeded for %s", email)
         return redirect(url_for('reset_password'))
     cur.execute("SELECT id FROM users WHERE email = %s", (email,))
     user = cur.fetchone()
     if not user:
         session['err'] = 'Email not found'
+        logger.warning("Resend OTP failed: email not found - %s", email)
         return redirect(url_for('forgot_password'))
     otp = ''.join([str(random.randint(0,9)) for _ in range(6)])
     otp_hash = generate_password_hash(otp)
@@ -386,14 +416,24 @@ def resend_otp():
         if app.config.get('EMAIL_ENABLED'):
             msg = Message("Sudoku Password Reset OTP", recipients=[email])
             msg.body = f"Your new OTP for password reset is {otp}. It expires in {config.OTP_EXP_MINUTES} minutes."
+            logger.info("Attempting to resend OTP email to %s", email)
             mail.send(msg)
-            cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", (email, "Sudoku Password Reset OTP", 'sent'))
+            cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", 
+                        (email, "Sudoku Password Reset OTP", 'sent'))
             db.commit()
+            logger.info("Resent OTP email to %s", email)
+        else:
+            logger.warning("EMAIL_ENABLED is False, skipping resend email for %s", email)
         session['reset_token'] = token
         session['msg'] = 'New OTP sent to your email'
+        logger.info("Resend OTP successful for %s", email)
         return redirect(url_for('reset_password'))
     except Exception as e:
+        db.rollback()
         logger.exception("Resend OTP failed: %s", e)
+        cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", 
+                    (email, "Sudoku Password Reset OTP", f'failed: {str(e)}'))
+        db.commit()
         session['err'] = 'Failed to resend OTP'
         return redirect(url_for('reset_password'))
 
@@ -494,6 +534,7 @@ def debug_db_check():
 # Email sending
 def send_email(recipient, subject, body, user_id):
     if not app.config.get('EMAIL_ENABLED'):
+        logger.warning("Email sending skipped: EMAIL_ENABLED is False")
         return
     try:
         msg = Message(subject, recipients=[recipient])
@@ -503,11 +544,13 @@ def send_email(recipient, subject, body, user_id):
         cur = db.cursor()
         cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", (recipient, subject, 'sent'))
         db.commit()
+        logger.info("Email sent to %s: %s", recipient, subject)
     except Exception as e:
         logger.exception("Email sending failed for %s: %s", recipient, e)
         db = get_db()
         cur = db.cursor()
-        cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", (recipient, subject, 'failed'))
+        cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", 
+                    (recipient, subject, f'failed: {str(e)}'))
         db.commit()
 
 # Weekly digest
