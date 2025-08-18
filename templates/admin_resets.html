@@ -1,15 +1,44 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="card">
-  <h2>Password Reset Attempts</h2>
-  <table class="table">
-    <thead><tr><th>ID</th><th>User ID</th><th>Expires At</th><th>Created At</th></tr></thead>
-    <tbody>
-      {% for r in rows %}
-        <tr><td>{{ r[0] }}</td><td>{{ r[1] }}</td><td>{{ r[2] }}</td><td>{{ r[3] }}</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <a class="btn secondary" href="/admin">Back</a>
-</div>
-{% endblock %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin - Password Resets</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        nav { margin-bottom: 20px; }
+        nav a { margin-right: 10px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Admin Dashboard</h1>
+    <nav>
+        <a href="{{ url_for('admin_users') }}">Users</a>
+        <a href="{{ url_for('admin_email_logs') }}">Email Logs</a>
+        <a href="{{ url_for('admin_password_resets') }}">Password Resets</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </nav>
+    <h2>Password Resets</h2>
+    {% if resets %}
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>User ID</th>
+            <th>Expires At</th>
+            <th>Created At</th>
+        </tr>
+        {% for reset in resets %}
+        <tr>
+            <td>{{ reset.id }}</td>
+            <td>{{ reset.user_id }}</td>
+            <td>{{ reset.expires_at }}</td>
+            <td>{{ reset.created_at }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No password reset records available.</p>
+    {% endif %}
+</body>
+</html>
