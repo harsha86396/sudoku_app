@@ -1,42 +1,29 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Admin - Users</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        nav { margin-bottom: 20px; }
-        nav a { margin-right: 10px; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-    </style>
-</head>
-<body>
-    <h1>Admin Dashboard</h1>
-    <nav>
-        <a href="{{ url_for('admin_users') }}">Users</a>
-        <a href="{{ url_for('admin_email_logs') }}">Email Logs</a>
-        <a href="{{ url_for('admin_password_resets') }}">Password Resets</a>
-        <a href="{{ url_for('logout') }}">Logout</a>
-    </nav>
-    <h2>Users</h2>
-    <table>
-        <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Games Played</th>
-            <th>Best Time (seconds)</th>
-        </tr>
-        {% for row in rows %}
-        <tr>
-            <td>{{ row.id }}</td>
-            <td>{{ row.name }}</td>
-            <td>{{ row.email }}</td>
-            <td>{{ row.games }}</td>
-            <td>{{ row.best or 'N/A' }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-</body>
-</html>
+{% extends 'base.html' %}
+{% block content %}
+  <h1>Admin Dashboard</h1>
+  <nav style="margin-bottom: 20px;">
+    <a href="{{ url_for('admin_users') }}" style="margin-right: 10px;">Users</a>
+    <a href="{{ url_for('admin_email_logs') }}" style="margin-right: 10px;">Email Logs</a>
+    <a href="{{ url_for('admin_password_resets') }}" style="margin-right: 10px;">Password Resets</a>
+    <a href="{{ url_for('logout') }}">Logout</a>
+  </nav>
+  <h2>Users</h2>
+  <table style="border-collapse: collapse; width: 100%;">
+    <tr style="background-color: #f2f2f2;">
+      <th style="border: 1px solid #ddd; padding: 8px;">ID</th>
+      <th style="border: 1px solid #ddd; padding: 8px;">Name</th>
+      <th style="border: 1px solid #ddd; padding: 8px;">Email</th>
+      <th style="border: 1px solid #ddd; padding: 8px;">Games</th>
+      <th style="border: 1px solid #ddd; padding: 8px;">Best(s)</th>
+    </tr>
+    {% for u in rows %}
+      <tr>
+        <td style="border: 1px solid #ddd; padding: 8px;">{{ u.id }}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">{{ u.name }}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">{{ u.email }}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">{{ u.games }}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">{{ u.best or '-' }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+{% endblock %}
