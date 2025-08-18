@@ -100,15 +100,18 @@ def index():
 
 @app.route('/register', methods=['POST'])
 def register():
-    name = request.form.get('name')
-    email = request.form.get('email')
-    password = request.form.get('password')
-    captcha = request.form.get('captcha')
+    name = request.form.get('name', '').strip()
+    email = request.form.get('email', '').strip()
+    password = request.form.get('password', '').strip()
+    captcha = request.form.get('captcha', '').strip()
+    logger.info("Register attempt: name=%s, email=%s, captcha=%s, session_captcha=%s", name, email, captcha, session.get('captcha'))
     if not (name and email and password and captcha):
         session['err'] = 'All fields are required'
+        logger.warning("Registration failed: missing fields")
         return redirect(url_for('index'))
     if captcha != session.get('captcha'):
         session['err'] = 'Invalid CAPTCHA'
+        logger.warning("Registration failed: invalid CAPTCHA")
         return redirect(url_for('index'))
     try:
         db = get_db()
@@ -117,9 +120,11 @@ def register():
         cur.execute("INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s)", (name, email, password_hash))
         db.commit()
         session['msg'] = 'Registration successful! Please log in.'
+        logger.info("Registration successful for %s", email)
         return redirect(url_for('index'))
     except psycopg.IntegrityError:
         session['err'] = 'Email already registered'
+        logger.warning("Registration failed: email %s already registered", email)
         return redirect(url_for('index'))
     except Exception as e:
         logger.exception("Registration failed: %s", e)
@@ -386,30 +391,40 @@ def admin():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
+        logger.info("Admin login attempt: email=%s", email)
         if email == app.config.get('ADMIN_EMAIL') and password == app.config.get('ADMIN_PASSWORD'):
             session['admin'] = True
+            logger.info("Admin login successful")
             return redirect(url_for('admin_users'))
         session['err'] = 'Invalid admin credentials'
+        logger.warning("Admin login failed: invalid credentials")
         return redirect(url_for('admin'))
     return render_template('admin_login.html')
 
 @app.route('/admin/users')
 def admin_users():
     if not session.get('admin'):
+        logger.warning("Unauthorized access to /admin/users")
         return redirect(url_for('admin'))
     db = get_db()
     cur = db.cursor()
-    cur.execute("""
-        SELECT u.id, u.name, u.email, COUNT(r.id) as games, MIN(r.seconds) as best
-        FROM users u LEFT JOIN results r ON u.id = r.user_id
-        GROUP BY u.id ORDER BY games DESC
-    """)
-    rows = cur.fetchall()
+    try:
+        cur.execute("""
+            SELECT u.id, u.name, u.email, COUNT(r.id) as games, MIN(r.seconds) as best
+            FROM users u LEFT JOIN results r ON u.id = r.user_id
+            GROUP BY u.id ORDER BY games DESC
+        """)
+        rows = cur.fetchall()
+        logger.info("Fetched %d users for admin dashboard", len(rows))
+    except Exception as e:
+        logger.exception("Admin users query failed: %s", e)
+        rows = []
     return render_template('admin_users.html', rows=rows)
 
 @app.route('/admin/email_logs')
 def admin_email_logs():
     if not session.get('admin'):
+        logger.warning("Unauthorized access to /admin/email_logs")
         return redirect(url_for('admin'))
     db = get_db()
     cur = db.cursor()
@@ -417,6 +432,7 @@ def admin_email_logs():
     try:
         cur.execute("SELECT id, recipient, subject, status, created_at FROM email_logs ORDER BY created_at DESC")
         logs = cur.fetchall()
+        logger.info("Fetched %d email logs for admin dashboard", len(logs))
     except Exception as e:
         logger.exception("Admin email logs query failed: %s", e)
     return render_template('admin_emails.html', logs=logs)
@@ -424,6 +440,7 @@ def admin_email_logs():
 @app.route('/admin/password_resets')
 def admin_password_resets():
     if not session.get('admin'):
+        logger.warning("Unauthorized access to /admin/password_resets")
         return redirect(url_for('admin'))
     db = get_db()
     cur = db.cursor()
@@ -431,6 +448,7 @@ def admin_password_resets():
     try:
         cur.execute("SELECT id, user_id, expires_at, created_at FROM password_resets ORDER BY created_at DESC")
         resets = cur.fetchall()
+        logger.info("Fetched %d password resets for admin dashboard", len(resets))
     except Exception as e:
         logger.exception("Admin password resets query failed: %s", e)
     return render_template('admin_resets.html', resets=resets)
