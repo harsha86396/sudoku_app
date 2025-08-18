@@ -2,13 +2,13 @@
 {% block content %}
   <h1>Welcome to {{ config.APP_NAME }}</h1>
   {% if msg %}
-    <p style="color: green;">{{ msg }}</p>
+    <p class="success">{{ msg }}</p>
   {% endif %}
   {% if err %}
-    <p style="color: red;">{{ err }}</p>
+    <p class="error">{{ err }}</p>
   {% endif %}
   <h2>Create account</h2>
-  <form method="POST" action="{{ url_for('register') }}" onsubmit="trimFormInputs()">
+  <form method="POST" action="{{ url_for('register') }}" onsubmit="validateForm(event)">
     <label for="name">Name:</label>
     <input type="text" id="name" name="name" required>
     <label for="email">Email:</label>
@@ -20,7 +20,7 @@
     <button type="submit">Register</button>
   </form>
   <h2>Login</h2>
-  <form method="POST" action="{{ url_for('login') }}" onsubmit="trimFormInputs()">
+  <form method="POST" action="{{ url_for('login') }}" onsubmit="validateForm(event)">
     <label for="login_email">Email:</label>
     <input type="email" id="login_email" name="email" required>
     <label for="login_password">Password:</label>
@@ -33,10 +33,18 @@
   </p>
   {% block scripts %}
     <script>
-      function trimFormInputs() {
+      function validateForm(event) {
+        event.preventDefault();
+        const form = event.target;
         document.querySelectorAll('input').forEach(input => {
           input.value = input.value.trim();
+          if (!input.value) {
+            alert('All fields are required');
+            event.preventDefault();
+            return;
+          }
         });
+        form.submit();
       }
     </script>
   {% endblock %}
