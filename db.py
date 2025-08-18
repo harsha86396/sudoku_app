@@ -1,9 +1,8 @@
-# db.py
-import sqlite3, os
+import sqlite3
 from flask import g
+import os
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.environ.get("DATABASE_PATH") or os.path.join(BASE_DIR, "sudoku.db")
+DB_PATH = os.environ.get("DATABASE_PATH") or os.path.join('/mnt/disk', 'sudoku.db')
 
 def get_db():
     if "db" not in g:
