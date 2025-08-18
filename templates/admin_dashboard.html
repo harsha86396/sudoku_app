@@ -1,12 +1,42 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="card">
-  <h1>Admin Dashboard</h1>
-  <nav class="small">
-    <a href="/admin/users">Users</a> ·
-    <a href="/admin/emails">Email Logs</a> ·
-    <a href="/admin/resets">Password Resets</a> ·
-    <a href="/admin/logout">Logout</a>
-  </nav>
-</div>
-{% endblock %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin - Users</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        nav { margin-bottom: 20px; }
+        nav a { margin-right: 10px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Admin Dashboard</h1>
+    <nav>
+        <a href="{{ url_for('admin_users') }}">Users</a>
+        <a href="{{ url_for('admin_email_logs') }}">Email Logs</a>
+        <a href="{{ url_for('admin_password_resets') }}">Password Resets</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </nav>
+    <h2>Users</h2>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Games Played</th>
+            <th>Best Time (seconds)</th>
+        </tr>
+        {% for row in rows %}
+        <tr>
+            <td>{{ row.id }}</td>
+            <td>{{ row.name }}</td>
+            <td>{{ row.email }}</td>
+            <td>{{ row.games }}</td>
+            <td>{{ row.best or 'N/A' }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
