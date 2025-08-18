@@ -222,17 +222,19 @@ def submit():
 def leaderboard():
     db = get_db()
     cur = db.cursor()
+    rows = []
     try:
         cur.execute("""
             SELECT u.name, MIN(r.seconds) as best, COUNT(r.id) as games
             FROM users u LEFT JOIN results r ON u.id = r.user_id
-            GROUP BY u.id ORDER BY best ASC NULLS LAST LIMIT 10
+            GROUP BY u.name
+            HAVING COUNT(r.id) > 0
+            ORDER BY best ASC NULLS LAST LIMIT 10
         """)
         rows = cur.fetchall()
-        logger.info("Fetched %d leaderboard rows", len(rows))
+        logger.info("Fetched %d leaderboard rows: %s", len(rows), rows)
     except Exception as e:
         logger.exception("Leaderboard query failed: %s", e)
-        rows = []
     return render_template('leaderboard.html', rows=rows)
 
 @app.route('/download_pdf')
