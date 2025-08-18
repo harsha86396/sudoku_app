@@ -316,6 +316,7 @@ def reset_password():
             cur.execute("UPDATE password_resets SET used = 1 WHERE token = %s", (token,))
             db.commit()
             session.pop('reset_email', None)
+            session.pop('reset_token', None)
             session['msg'] = 'Password reset successfully! Please log in.'
             return redirect(url_for('index'))
         except Exception as e:
