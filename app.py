@@ -11,6 +11,7 @@ import schedule
 import time as time_mod
 from datetime import datetime, timedelta
 import logging
+import smtplib
 
 # utils
 from utils.sudoku import make_puzzle
@@ -88,6 +89,18 @@ def ensure_schema():
     con.commit()
     con.close()
     logger.info("Database schema ensured")
+
+# Test SMTP connection
+def test_smtp_connection():
+    try:
+        with smtplib.SMTP(app.config['MAIL_SERVER'], app.config['MAIL_PORT']) as smtp:
+            smtp.starttls()
+            smtp.login(app.config['MAIL_USERNAME'], app.config['MAIL_PASSWORD'])
+        logger.info("SMTP connection successful")
+        return True
+    except Exception as e:
+        logger.error("SMTP connection failed: %s", e)
+        return False
 
 # Routes
 @app.route('/')
@@ -265,7 +278,8 @@ def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
         captcha = request.form.get('captcha', '').strip()
-        logger.info("Forgot password attempt: email='%s', captcha='%s', session_captcha='%s'", email, captcha, session.get('captcha'))
+        logger.info("Forgot password attempt: email='%s', captcha='%s', session_captcha='%s', session=%s", 
+                    email, captcha, session.get('captcha'), dict(session))
         if not (email and captcha):
             session['err'] = 'Email and CAPTCHA are required'
             logger.warning("Forgot password failed: missing fields - email=%s, captcha=%s", email, captcha)
@@ -301,6 +315,10 @@ def forgot_password():
                             (email, now, now))
                 db.commit()
                 if app.config.get('EMAIL_ENABLED'):
+                    logger.info("SMTP config: server=%s, port=%s, user=%s, enabled=%s", 
+                                app.config['MAIL_SERVER'], app.config['MAIL_PORT'], app.config['MAIL_USERNAME'], app.config['EMAIL_ENABLED'])
+                    if not test_smtp_connection():
+                        raise Exception("SMTP connection failed")
                     msg = Message("Sudoku Password Reset OTP", recipients=[email])
                     msg.body = f"Your OTP for password reset is {otp}. It expires in {config.OTP_EXP_MINUTES} minutes."
                     logger.info("Attempting to send OTP email to %s", email)
@@ -311,14 +329,17 @@ def forgot_password():
                     logger.info("OTP email sent to %s", email)
                 else:
                     logger.warning("EMAIL_ENABLED is False, skipping email for %s", email)
+                    cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", 
+                                (email, "Sudoku Password Reset OTP", 'skipped: EMAIL_ENABLED=False'))
+                    db.commit()
                 session['reset_email'] = email
                 session['reset_token'] = token
                 session['msg'] = 'OTP sent to your email'
-                logger.info("Forgot password successful: redirecting to reset_password for %s", email)
+                logger.info("Forgot password successful: redirecting to reset_password for %s, session=%s", email, dict(session))
                 return redirect(url_for('reset_password'))
             except Exception as e:
                 db.rollback()
-                logger.exception("Forgot password failed: %s", e)
+                logger.exception("Forgot password email failed: %s", e)
                 cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", 
                             (email, "Sudoku Password Reset OTP", f'failed: {str(e)}'))
                 db.commit()
@@ -341,7 +362,7 @@ def reset_password():
         otp = request.form.get('otp')
         password = request.form.get('password')
         confirm = request.form.get('confirm')
-        logger.info("Reset password attempt: email='%s', otp='%s'", email, otp)
+        logger.info("Reset password attempt: email='%s', otp='%s', session=%s", email, otp, dict(session))
         if not (email and token and otp and password and confirm):
             session['err'] = 'All fields are required'
             logger.warning("Reset password failed: missing fields")
@@ -414,6 +435,10 @@ def resend_otp():
                     (email, now, now))
         db.commit()
         if app.config.get('EMAIL_ENABLED'):
+            logger.info("SMTP config: server=%s, port=%s, user=%s, enabled=%s", 
+                        app.config['MAIL_SERVER'], app.config['MAIL_PORT'], app.config['MAIL_USERNAME'], app.config['EMAIL_ENABLED'])
+            if not test_smtp_connection():
+                raise Exception("SMTP connection failed")
             msg = Message("Sudoku Password Reset OTP", recipients=[email])
             msg.body = f"Your new OTP for password reset is {otp}. It expires in {config.OTP_EXP_MINUTES} minutes."
             logger.info("Attempting to resend OTP email to %s", email)
@@ -424,9 +449,12 @@ def resend_otp():
             logger.info("Resent OTP email to %s", email)
         else:
             logger.warning("EMAIL_ENABLED is False, skipping resend email for %s", email)
+            cur.execute("INSERT INTO email_logs (recipient, subject, status) VALUES (%s, %s, %s)", 
+                        (email, "Sudoku Password Reset OTP", 'skipped: EMAIL_ENABLED=False'))
+            db.commit()
         session['reset_token'] = token
         session['msg'] = 'New OTP sent to your email'
-        logger.info("Resend OTP successful for %s", email)
+        logger.info("Resend OTP successful for %s, session=%s", email, dict(session))
         return redirect(url_for('reset_password'))
     except Exception as e:
         db.rollback()
@@ -528,7 +556,11 @@ def debug_db_check():
     return jsonify({
         'db_url': os.environ.get("DATABASE_URL", "Not set"),
         'user_count': user_count,
-        'session': dict(session)
+        'session': dict(session),
+        'smtp_enabled': app.config.get('EMAIL_ENABLED'),
+        'smtp_server': app.config.get('MAIL_SERVER'),
+        'smtp_port': app.config.get('MAIL_PORT'),
+        'smtp_user': app.config.get('MAIL_USERNAME')
     })
 
 # Email sending
@@ -537,6 +569,10 @@ def send_email(recipient, subject, body, user_id):
         logger.warning("Email sending skipped: EMAIL_ENABLED is False")
         return
     try:
+        logger.info("SMTP config: server=%s, port=%s, user=%s, enabled=%s", 
+                    app.config['MAIL_SERVER'], app.config['MAIL_PORT'], app.config['MAIL_USERNAME'], app.config['EMAIL_ENABLED'])
+        if not test_smtp_connection():
+            raise Exception("SMTP connection failed")
         msg = Message(subject, recipients=[recipient])
         msg.body = body
         mail.send(msg)
