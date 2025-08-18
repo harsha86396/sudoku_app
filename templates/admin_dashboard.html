@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 {% block content %}
   <h1>Admin Dashboard</h1>
-  <nav style="margin-bottom: 20px;">
-    <a href="{{ url_for('admin_users') }}" style="margin-right: 10px;">Users</a>
-    <a href="{{ url_for('admin_email_logs') }}" style="margin-right: 10px;">Email Logs</a>
-    <a href="{{ url_for('admin_password_resets') }}" style="margin-right: 10px;">Password Resets</a>
+  <nav>
+    <a href="{{ url_for('admin_users') }}">Users</a>
+    <a href="{{ url_for('admin_email_logs') }}">Email Logs</a>
+    <a href="{{ url_for('admin_password_resets') }}">Password Resets</a>
     <a href="{{ url_for('logout') }}">Logout</a>
   </nav>
 {% endblock %}
