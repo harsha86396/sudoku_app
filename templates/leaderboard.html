@@ -2,21 +2,25 @@
 {% block content %}
   <h1>🏆 Leaderboard</h1>
   <h2>Fastest all-time bests</h2>
-  <table>
-    <tr>
-      <th>#</th>
-      <th>Name</th>
-      <th>Best (s)</th>
-      <th>Games</th>
-    </tr>
-    {% for i, row in enumerate(rows, start=1) %}
+  {% if rows %}
+    <table>
       <tr>
-        <td>{{ i }}</td>
-        <td>{{ row.name }}</td>
-        <td>{{ row.best or '-' }}</td>
-        <td>{{ row.games }}</td>
+        <th>#</th>
+        <th>Name</th>
+        <th>Best (s)</th>
+        <th>Games</th>
       </tr>
-    {% endfor %}
-  </table>
+      {% for i, row in enumerate(rows, start=1) %}
+        <tr>
+          <td>{{ i }}</td>
+          <td>{{ row.name }}</td>
+          <td>{{ row.best or '-' }}</td>
+          <td>{{ row.games }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p>No games have been played yet.</p>
+  {% endif %}
   <p><a href="{{ url_for('dashboard') }}">Back</a></p>
 {% endblock %}
