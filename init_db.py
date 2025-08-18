@@ -1,22 +1,22 @@
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import os
 import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.environ.get("DATABASE_PATH") or os.path.join('/mnt/disk', 'sudoku.db')
+DB_URL = os.environ.get("DATABASE_URL")
 
 def init_db():
-    logger.info("Initializing database at %s", DB_PATH)
-    con = sqlite3.connect(DB_PATH)
+    logger.info("Initializing PostgreSQL database")
+    con = psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
     cur = con.cursor()
 
     # Users
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         name TEXT,
         email TEXT UNIQUE,
         password_hash TEXT,
@@ -27,7 +27,7 @@ def init_db():
     # Results (game plays)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS results (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         user_id INTEGER,
         seconds INTEGER,
         played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -38,7 +38,7 @@ def init_db():
     # Email logs
     cur.execute("""
     CREATE TABLE IF NOT EXISTS email_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         recipient TEXT,
         subject TEXT,
         status TEXT,
@@ -49,7 +49,7 @@ def init_db():
     # Password resets
     cur.execute("""
     CREATE TABLE IF NOT EXISTS password_resets (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         user_id INTEGER,
         token TEXT,
         otp_hash TEXT,
@@ -69,7 +69,7 @@ def init_db():
 
     con.commit()
     con.close()
-    logger.info("Database initialized successfully at %s", DB_PATH)
+    logger.info("PostgreSQL database initialized successfully")
 
 if __name__ == "__main__":
     init_db()
