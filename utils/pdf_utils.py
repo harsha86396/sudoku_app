@@ -1,35 +1,25 @@
 from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from datetime import datetime
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
 
-def generate_last7_pdf(username, email, rows, out_stream):
-    width, height = letter
-    pdf = canvas.Canvas(out_stream, pagesize=letter)
-    pdf.setTitle("Sudoku – Last 7 Days")
-
-    # Cover
-    pdf.setFont("Helvetica-Bold", 24)
-    pdf.drawCentredString(width/2, height-150, "Sudoku AI")
-    pdf.setFont("Helvetica", 18)
-    pdf.drawCentredString(width/2, height-190, "Activity Report (Last 7 Days)")
-    pdf.setFont("Helvetica", 12)
-    pdf.drawCentredString(width/2, height-230, f"User: {username} ({email})")
-    pdf.drawCentredString(width/2, height-250, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    pdf.showPage()
-
-    y = height - 60
-    pdf.setFont("Helvetica-Bold", 14)
-    pdf.drawString(50, y, "Recent Games")
-    y -= 20
-    pdf.setFont("Helvetica", 11)
-    if not rows:
-        pdf.drawString(50, y, "No games recorded in the last 7 days.")
-        y -= 14
-    else:
-        for seconds, played_at in rows:
-            pdf.drawString(50, y, f"- {played_at} — {seconds}s")
-            y -= 14
-            if y < 60:
-                pdf.showPage(); y = height - 60
-    pdf.showPage()
-    pdf.save()
+def generate_last7_pdf(name, email, rows, out_stream):
+    doc = SimpleDocTemplate(out_stream, pagesize=letter)
+    styles = getSampleStyleSheet()
+    elements = []
+    elements.append(Paragraph(f"Sudoku Report for {name} ({email})", styles['Heading1']))
+    data = [["Seconds", "Played At"]]
+    data.extend([[row[0], row[1]] for row in rows])
+    table = Table(data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 14),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    elements.append(table)
+    doc.build(elements)
