@@ -1,33 +1,11 @@
 {% extends 'base.html' %}
 {% block content %}
-  <h1>Admin Dashboard</h1>
-  <nav>
-    <a href="{{ url_for('admin_users') }}">Users</a>
-    <a href="{{ url_for('admin_email_logs') }}">Email Logs</a>
-    <a href="{{ url_for('admin_password_resets') }}">Password Resets</a>
-    <a href="{{ url_for('logout') }}">Logout</a>
-  </nav>
-  <h2>Email Logs</h2>
-  {% if logs %}
-    <table>
-      <tr>
-        <th>ID</th>
-        <th>Recipient</th>
-        <th>Subject</th>
-        <th>Status</th>
-        <th>Created At</th>
-      </tr>
-      {% for log in logs %}
-        <tr>
-          <td>{{ log.id }}</td>
-          <td>{{ log.recipient }}</td>
-          <td>{{ log.subject }}</td>
-          <td>{{ log.status }}</td>
-          <td>{{ log.created_at }}</td>
-        </tr>
-      {% endfor %}
-    </table>
-  {% else %}
-    <p>No email logs available.</p>
-  {% endif %}
+  <h1>Email Logs</h1>
+  <table border="1">
+    <tr><th>ID</th><th>Recipient</th><th>Subject</th><th>Status</th><th>Created At</th></tr>
+    {% for log in logs %}
+      <tr><td>{{ log.id }}</td><td>{{ log.recipient }}</td><td>{{ log.subject }}</td><td>{{ log.status }}</td><td>{{ log.created_at }}</td></tr>
+    {% endfor %}
+  </table>
+  <p><a href="{{ url_for('admin_dashboard') }}">Back to Admin Dashboard</a></p>
 {% endblock %}
