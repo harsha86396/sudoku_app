@@ -4,10 +4,10 @@ import os
 EMAIL_ENABLED = os.environ.get('EMAIL_ENABLED', 'True') == 'True'
 SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
 SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
-SMTP_USER = os.environ.get('SMTP_USER', 'harsha86396@gmail.com')
-SMTP_PASS = os.environ.get('SMTP_PASS', 'mstxbkcvhtstpncp')
+SMTP_USER = os.environ.get('SMTP_USER')  # Removed hardcoded value
+SMTP_PASS = os.environ.get('SMTP_PASS')  # Removed hardcoded value
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'your-very-secret-key-123456')
+SECRET_KEY = os.environ.get('SECRET_KEY', os.urandom(24).hex())  # Secure default
 APP_NAME = "Sudoku powered by Harsha Enterprises"
 
 # Admin panel credentials
