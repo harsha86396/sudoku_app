@@ -1,31 +1,11 @@
 {% extends 'base.html' %}
 {% block content %}
-  <h1>Admin Dashboard</h1>
-  <nav>
-    <a href="{{ url_for('admin_users') }}">Users</a>
-    <a href="{{ url_for('admin_email_logs') }}">Email Logs</a>
-    <a href="{{ url_for('admin_password_resets') }}">Password Resets</a>
-    <a href="{{ url_for('logout') }}">Logout</a>
-  </nav>
-  <h2>Password Reset Attempts</h2>
-  {% if resets %}
-    <table>
-      <tr>
-        <th>ID</th>
-        <th>User ID</th>
-        <th>Expires At</th>
-        <th>Created At</th>
-      </tr>
-      {% for reset in resets %}
-        <tr>
-          <td>{{ reset.id }}</td>
-          <td>{{ reset.user_id }}</td>
-          <td>{{ reset.expires_at }}</td>
-          <td>{{ reset.created_at }}</td>
-        </tr>
-      {% endfor %}
-    </table>
-  {% else %}
-    <p>No password reset records available.</p>
-  {% endif %}
+  <h1>Password Resets</h1>
+  <table border="1">
+    <tr><th>ID</th><th>User ID</th><th>Expires At</th><th>Created At</th></tr>
+    {% for reset in resets %}
+      <tr><td>{{ reset.id }}</td><td>{{ reset.user_id }}</td><td>{{ reset.expires_at }}</td><td>{{ reset.created_at }}</td></tr>
+    {% endfor %}
+  </table>
+  <p><a href="{{ url_for('admin_dashboard') }}">Back to Admin Dashboard</a></p>
 {% endblock %}
