@@ -1,31 +1,17 @@
 {% extends 'base.html' %}
 {% block content %}
   <h1>Admin Login</h1>
-  {% if err %}
-    <p class="error">{{ err }}</p>
-  {% endif %}
-  <form method="POST" action="{{ url_for('admin') }}" onsubmit="validateForm(event)">
-    <label for="email">Email:</label>
-    <input type="email" id="email" name="email" required>
-    <label for="password">Password:</label>
-    <input type="password" id="password" name="password" required>
-    <button type="submit">Login</button>
+  <form method="post" action="{{ url_for('admin') }}">
+    <p>
+      <label for="email">Email:</label><br>
+      <input type="email" name="email" required>
+    </p>
+    <p>
+      <label for="password">Password:</label><br>
+      <input type="password" name="password" required>
+    </p>
+    <p><input type="submit" value="Login"></p>
   </form>
-  {% block scripts %}
-    <script>
-      function validateForm(event) {
-        event.preventDefault();
-        const form = event.target;
-        document.querySelectorAll('input').forEach(input => {
-          input.value = input.value.trim();
-          if (!input.value) {
-            alert('All fields are required');
-            event.preventDefault();
-            return;
-          }
-        });
-        form.submit();
-      }
-    </script>
-  {% endblock %}
+  <p><a href="{{ url_for('index') }}">Back to Login</a></p>
+  <p class="error">{{ session.pop('err', '') }}</p>
 {% endblock %}
