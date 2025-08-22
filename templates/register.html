@@ -1,25 +1,25 @@
 {% extends 'base.html' %}
 {% block content %}
-  <h1>Register</h1>
-  <form method="post" action="{{ url_for('register') }}">
+  <h1>Reset Password</h1>
+  <form method="post" action="{{ url_for('reset_password') }}">
     <p>
-      <label for="name">Name:</label><br>
-      <input type="text" name="name" required>
+      <label for="otp">OTP (sent to {{ email }}):</label><br>
+      <input type="text" name="otp" required>
     </p>
     <p>
-      <label for="email">Email:</label><br>
-      <input type="email" name="email" required>
-    </p>
-    <p>
-      <label for="password">Password:</label><br>
+      <label for="password">New Password:</label><br>
       <input type="password" name="password" required>
     </p>
     <p>
-      <label for="captcha">{{ captcha_q }} = </label>
-      <input type="text" name="captcha" required>
+      <label for="confirm">Confirm Password:</label><br>
+      <input type="password" name="confirm" required>
     </p>
-    <p><input type="submit" value="Register"></p>
+    <p><input type="submit" value="Reset Password"></p>
+  </form>
+  <form method="post" action="{{ url_for('resend_otp') }}">
+    <p><input type="submit" value="Resend OTP"></p>
   </form>
   <p><a href="{{ url_for('index') }}">Back to Login</a></p>
+  <p class="success">{{ session.pop('msg', '') }}</p>
   <p class="error">{{ session.pop('err', '') }}</p>
 {% endblock %}
