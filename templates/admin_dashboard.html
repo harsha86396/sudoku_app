@@ -1,11 +1,8 @@
 {% extends 'base.html' %}
 {% block content %}
-  <h1>Users</h1>
-  <table border="1">
-    <tr><th>ID</th><th>Name</th><th>Email</th><th>Games Played</th><th>Best Time (s)</th></tr>
-    {% for row in rows %}
-      <tr><td>{{ row.id }}</td><td>{{ row.name }}</td><td>{{ row.email }}</td><td>{{ row.games }}</td><td>{{ row.best }}</td></tr>
-    {% endfor %}
-  </table>
-  <p><a href="{{ url_for('admin_dashboard') }}">Back to Admin Dashboard</a></p>
+  <h1>Admin Dashboard</h1>
+  <p><a href="{{ url_for('admin_users') }}">Users</a></p>
+  <p><a href="{{ url_for('admin_email_logs') }}">Email Logs</a></p>
+  <p><a href="{{ url_for('admin_password_resets') }}">Password Resets</a></p>
+  <p><a href="{{ url_for('logout') }}">Logout</a></p>
 {% endblock %}
