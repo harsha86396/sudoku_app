@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h1>Login</h1>
+  <form method="post" action="{{ url_for('login') }}">
+    <p>
+      <label for="email">Email:</label><br>
+      <input type="email" name="email" required>
+    </p>
+    <p>
+      <label for="password">Password:</label><br>
+      <input type="password" name="password" required>
+    </p>
+    <p>
+      <label for="captcha">{{ captcha_q }} = </label>
+      <input type="text" name="captcha" required>
+    </p>
+    <p><input type="submit" value="Login"></p>
+  </form>
+  <p><a href="{{ url_for('register') }}">Register</a> | <a href="{{ url_for('forgot_password') }}">Forgot Password?</a></p>
+  <form method="post" action="{{ url_for('guest') }}">
+    <p><input type="submit" value="Play as Guest"></p>
+  </form>
+  <p class="success">{{ msg }}</p>
+  <p class="error">{{ err }}</p>
+{% endblock %}
