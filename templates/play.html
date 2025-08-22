@@ -1,76 +1,116 @@
 {% extends 'base.html' %}
 {% block content %}
-  <h1>🧩 Sudoku</h1>
-  <p>Theme: <span id="theme">Light</span> • Hints left: <span id="hints-left">{{ session.get('hints_left', 3) }}</span> • Time: <span id="timer">0s</span></p>
-  <form method="POST" action="{{ url_for('play') }}">
-    <label for="difficulty">Difficulty:</label>
-    <select id="difficulty" name="difficulty">
-      <option value="easy">Easy</option>
-      <option value="medium" selected>Medium</option>
-      <option value="hard">Hard</option>
-    </select>
-    <button type="submit">New Puzzle</button>
-    <button type="button" onclick="getHint()">Get Hint</button>
-    <button type="button" onclick="restart()">Restart</button>
-  </form>
-  <div id="sudoku-grid" style="margin: 20px auto; display: grid; grid-template-columns: repeat(9, 40px); gap: 1px; max-width: 360px;">
-    {% for r in range(9) %}
-      {% for c in range(9) %}
-        <input type="text" maxlength="1" 
-               value="{{ session.get('puzzle', [[0]*9]*9)[r][c] if session.get('puzzle', [[0]*9]*9)[r][c] != 0 else '' }}"
-               style="width: 40px; height: 40px; text-align: center; font-size: 16px; 
-                      {% if r in [3, 6] %}border-top: 2px solid #333;{% endif %}
-                      {% if r == 0 %}border-top: 2px solid #333;{% endif %}
-                      {% if c in [3, 6] %}border-left: 2px solid #333;{% endif %}
-                      {% if c == 0 %}border-left: 2px solid #333;{% endif %}
-                      {% if r == 8 %}border-bottom: 2px solid #333;{% endif %}
-                      {% if c == 8 %}border-right: 2px solid #333;{% endif %}
-                      {% if session.get('puzzle', [[0]*9]*9)[r][c] != 0 %}background-color: #f0f0f0;{% endif %}"
-               {{ 'readonly' if session.get('puzzle', [[0]*9]*9)[r][c] != 0 else '' }}
-               onkeydown="handleKey(event)">
-      {% endfor %}
-    {% endfor %}
-  </div>
-  <div style="margin: 20px 0; display: flex; gap: 5px; justify-content: center;">
-    <button onclick="setValue(1)">1</button>
-    <button onclick="setValue(2)">2</button>
-    <button onclick="setValue(3)">3</button>
-    <button onclick="setValue(4)">4</button>
-    <button onclick="setValue(5)">5</button>
-    <button onclick="setValue(6)">6</button>
-    <button onclick="setValue(7)">7</button>
-    <button onclick="setValue(8)">8</button>
-    <button onclick="setValue(9)">9</button>
-    <button onclick="erase()">Erase</button>
-  </div>
-  <p>“{{ config.APP_NAME }}”</p>
-  <p><a href="{{ url_for('dashboard') }}">Back</a></p>
+  <h1>Sudoku</h1>
+  <p>Hi {{ session.name | default('Guest') }}! Hints left: <span id="hints">{{ session.hints_left | default(3) }}</span></p>
+  <p>Time: <span id="timer">0</span>s</p>
+  <select id="difficulty" onchange="startNewGame()">
+    <option value="easy">Easy</option>
+    <option value="medium" selected>Medium</option>
+    <option value="hard">Hard</option>
+  </select>
+  <button onclick="startNewGame()">New Game</button>
+  <button onclick="getHint()" id="hintBtn">Get Hint</button>
+  <button onclick="submitPuzzle()">Submit</button>
+  <div id="sudokuGrid"></div>
+  <p id="msg" class="success">{{ session.pop('msg', '') }}</p>
+  <p id="err" class="error">{{ session.pop('err', '') }}</p>
+  <p><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
 {% endblock %}
 {% block scripts %}
   <script>
-    let startTime = {{ session.get('start_time', 'null') }};
-    function updateTimer() {
-      if (startTime) {
-        const elapsed = Math.floor((Date.now() / 1000) - startTime);
-        document.getElementById('timer').textContent = `${elapsed}s`;
+    // Initialize with safe JSON parsing
+    let grid = [];
+    let solution = [];
+    try {
+      const puzzleData = '{{ session.puzzle | tojson | safe | default('[]') }}';
+      const solutionData = '{{ session.solution | tojson | safe | default('[]') }}';
+      grid = JSON.parse(puzzleData !== '' ? puzzleData : '[]');
+      solution = JSON.parse(solutionData !== '' ? solutionData : '[]');
+    } catch (e) {
+      console.error('Failed to parse grid or solution:', e);
+    }
+    let startTime = {{ session.start_time | tojson | safe | default(0) }};
+
+    // Validate grid and solution
+    if (!Array.isArray(grid) || grid.length !== 9 || !grid.every(row => Array.isArray(row) && row.length === 9)) {
+      console.warn('Invalid or empty grid, starting new game');
+      startNewGame();
+      return;
+    }
+    if (!Array.isArray(solution) || solution.length !== 9 || !solution.every(row => Array.isArray(row) && row.length === 9)) {
+      console.warn('Invalid or empty solution, starting new game');
+      startNewGame();
+      return;
+    }
+
+    function createGrid() {
+      const gridDiv = document.getElementById('sudokuGrid');
+      gridDiv.innerHTML = '';
+      const table = document.createElement('table');
+      for (let r = 0; r < 9; r++) {
+        const row = document.createElement('tr');
+        for (let c = 0; c < 9; c++) {
+          const cell = document.createElement('td');
+          cell.className = `cell r${r} c${c} block${Math.floor(r/3)*3 + Math.floor(c/3)}`;
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.maxLength = 1;
+          input.value = grid[r][c] || '';
+          input.readOnly = grid[r][c] !== 0;
+          input.oninput = () => updateGrid(r, c, input.value);
+          input.onfocus = () => highlight(r, c);
+          input.onblur = () => clearHighlight();
+          cell.appendChild(input);
+          row.appendChild(cell);
+        }
+        table.appendChild(row);
+      }
+      gridDiv.appendChild(table);
+      updateTimer();
+    }
+
+    function updateGrid(r, c, value) {
+      const num = parseInt(value) || 0;
+      if (num >= 0 && num <= 9) {
+        grid[r][c] = num;
+      } else {
+        grid[r][c] = 0;
+        document.querySelector(`.r${r}.c${c} input`).value = '';
       }
     }
-    setInterval(updateTimer, 1000);
 
-    function handleKey(event) {
-      const input = event.target;
-      if (input.hasAttribute('readonly')) {
-        event.preventDefault();
-        return;
+    function highlight(r, c) {
+      clearHighlight();
+      document.querySelectorAll(`.r${r} input, .c${c} input, .block${Math.floor(r/3)*3 + Math.floor(c/3)} input`)
+        .forEach(input => input.classList.add('highlight'));
+    }
+
+    function clearHighlight() {
+      document.querySelectorAll('.highlight').forEach(input => input.classList.remove('highlight'));
+    }
+
+    function updateTimer() {
+      if (startTime) {
+        const seconds = Math.floor((Date.now() / 1000) - startTime);
+        document.getElementById('timer').textContent = seconds;
+        setTimeout(updateTimer, 1000);
       }
-      const key = event.key;
-      if (key >= '1' && key <= '9') {
-        input.value = key;
-      } else if (key === 'Backspace' || key === 'Delete') {
-        input.value = '';
-      } else {
-        event.preventDefault();
-      }
+    }
+
+    function startNewGame() {
+      const difficulty = document.getElementById('difficulty').value;
+      fetch('/play', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `difficulty=${difficulty}`
+      }).then(response => {
+        if (response.redirected) {
+          window.location.href = response.url;
+        }
+      }).catch(error => {
+        console.error('Failed to start new game:', error);
+        document.getElementById('err').textContent = 'Failed to start new game';
+      });
     }
 
     function getHint() {
@@ -78,34 +118,119 @@
         .then(response => response.json())
         .then(data => {
           if (data.error) {
-            alert(data.error);
-          } else {
-            const inputs = document.querySelectorAll('#sudoku-grid input');
-            const index = data.row * 9 + data.col;
-            inputs[index].value = data.value;
-            inputs[index].setAttribute('readonly', true);
-            inputs[index].style.backgroundColor = document.body.classList.contains('dark') ? '#555' : '#f0f0f0';
-            document.getElementById('hints-left').textContent = data.hints_left;
+            document.getElementById('err').textContent = data.error;
+            return;
           }
+          grid[data.row][data.col] = data.value;
+          const input = document.querySelector(`.r${data.row}.c${data.col} input`);
+          input.value = data.value;
+          input.readOnly = true;
+          document.getElementById('hints').textContent = data.hints_left;
+          if (data.hints_left === 0) {
+            document.getElementById('hintBtn').disabled = true;
+          }
+          document.getElementById('err').textContent = '';
+        }).catch(error => {
+          console.error('Hint request failed:', error);
+          document.getElementById('err').textContent = 'Failed to get hint';
         });
     }
 
-    function restart() {
-      document.querySelectorAll('#sudoku-grid input:not([readonly])').forEach(input => input.value = '');
+    function validatePuzzle() {
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          if (grid[r][c] === 0 || grid[r][c] !== solution[r][c]) {
+            return false;
+          }
+        }
+      }
+      return true;
     }
 
-    function setValue(value) {
-      const activeInput = document.activeElement;
-      if (activeInput.tagName === 'INPUT' && !activeInput.hasAttribute('readonly')) {
-        activeInput.value = value;
+    function submitPuzzle() {
+      if (!validatePuzzle()) {
+        document.getElementById('err').textContent = 'Puzzle incomplete or incorrect';
+        alert('Puzzle is incomplete or contains errors. Please check your entries.');
+        return;
       }
+      fetch('/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ grid: grid })
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            document.getElementById('err').textContent = data.error;
+            alert(data.error);
+          } else {
+            document.getElementById('msg').textContent = `Puzzle submitted in ${data.seconds} seconds!`;
+            alert(`Success! Puzzle completed in ${data.seconds} seconds.`);
+            window.location.href = '/dashboard';
+          }
+        })
+        .catch(error => {
+          console.error('Submission failed:', error);
+          document.getElementById('err').textContent = 'Submission failed';
+          alert('Submission failed: ' + error.message);
+        });
     }
 
-    function erase() {
-      const activeInput = document.activeElement;
-      if (activeInput.tagName === 'INPUT' && !activeInput.hasAttribute('readonly')) {
-        activeInput.value = '';
+    window.onload = () => {
+      {% if not session.user_id %}
+        alert('Playing in Guest Mode: Your scores will not be saved, shown on the leaderboard, or included in PDFs.');
+      {% endif %}
+      if (!grid.length || !solution.length) {
+        console.warn('Grid or solution empty, starting new game');
+        startNewGame();
+      } else {
+        createGrid();
       }
-    }
+    };
   </script>
+  <style>
+    table { 
+      border-collapse: collapse; 
+      margin: 20px 0; 
+      border: 2px solid #333; 
+    }
+    .cell { 
+      width: 40px; 
+      height: 40px; 
+      border: 1px solid #ccc; 
+      text-align: center; 
+    }
+    .cell input { 
+      width: 100%; 
+      height: 100%; 
+      border: none; 
+      text-align: center; 
+      font-size: 16px; 
+    }
+    .cell input:read-only { 
+      background: #f0f0f0; 
+    }
+    .highlight { 
+      background: #e0e0ff; 
+    }
+    .success { 
+      color: green; 
+    }
+    .error { 
+      color: red; 
+    }
+    /* 3x3 subgrid borders */
+    .r0, .r3, .r6 { 
+      border-top: 2px solid #333; 
+    }
+    .c0, .c3, .c6 { 
+      border-left: 2px solid #333; 
+    }
+    .r8 { 
+      border-bottom: 2px solid #333; 
+    }
+    .c8 { 
+      border-right: 2px solid #333; 
+    }
+  </style>
 {% endblock %}
