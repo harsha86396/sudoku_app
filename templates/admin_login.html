@@ -1,16 +1,21 @@
 {% extends 'base.html' %}
 {% block content %}
   <h1>Admin Login</h1>
-  <form method="post" action="{{ url_for('admin') }}">
+  <form method="post" action="{{ url_for('admin_login') }}">
+    {{ form.hidden_tag() }}
     <p>
-      <label for="email">Email:</label><br>
-      <input type="email" name="email" required>
+      {{ form.email.label }}<br>
+      {{ form.email() }}
     </p>
     <p>
-      <label for="password">Password:</label><br>
-      <input type="password" name="password" required>
+      {{ form.password.label }}<br>
+      {{ form.password() }}
     </p>
-    <p><input type="submit" value="Login"></p>
+    <p>
+      <label for="captcha">{{ captcha_q }} = </label>
+      {{ form.captcha() }}
+    </p>
+    <p>{{ form.submit() }}</p>
   </form>
   <p><a href="{{ url_for('index') }}">Back to Login</a></p>
   <p class="error">{{ session.pop('err', '') }}</p>
