@@ -1,25 +1,17 @@
-import psycopg
-from psycopg.rows import dict_row
-from flask import g
 import os
-import logging
+from flask import g
+from psycopg_pool import ConnectionPool
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-DB_URL = os.environ.get("DATABASE_URL")
+# Connection pool
+pool = ConnectionPool(os.environ.get("DATABASE_URL"), min_size=1, max_size=10)
 
 def get_db():
-    if "db" not in g:
-        logger.info("Connecting to PostgreSQL database")
-        g.db = psycopg.connect(DB_URL, row_factory=dict_row)
+    if 'db' not in g:
+        g.db = pool.getconn()
+        g.db.row_factory = dict_row
     return g.db
 
 def close_db(e=None):
-    db = g.pop("db", None)
+    db = g.pop('db', None)
     if db is not None:
-        try:
-            db.commit()
-        except Exception as e:
-            logger.exception("Error committing database: %s", e)
-        db.close()
+        pool.putconn(db)
