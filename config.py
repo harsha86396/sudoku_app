@@ -1,5 +1,21 @@
-import os
+# ===== App Config =====
+EMAIL_ENABLED = False  # Disabled by default for deployment
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+SMTP_USER = "harsha86396@gmail.com"
+SMTP_PASS = "mstxbkcvhtstpncp"  # Gmail App Password you provided
 
-ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
-ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'securepassword')
-EMAIL_API_KEY = os.getenv('EMAIL_API_KEY', '')
+SECRET_KEY = "please-change-this-very-secret-key-in-production"
+APP_NAME = "Sudoku powered by Harsha Enterprises"
+
+# Admin panel credentials
+ADMIN_EMAIL = "admin@sudoku.local"
+ADMIN_PASSWORD = "admin123"  # change in production
+
+# OTP settings
+OTP_EXP_MINUTES = 10
+OTP_RATE_LIMIT_SECONDS = 60  # per email
+
+# Weekly digest
+DIGEST_ENABLED = False  # Disabled by default for deployment
+DIGEST_IST_TIME = "18:00"
