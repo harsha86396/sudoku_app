@@ -1,61 +1,25 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <title>{{ config.APP_NAME }}</title>
-  <style>
-    body { 
-      font-family: Arial, sans-serif; 
-      margin: 40px; 
-      transition: all 0.3s ease; 
-    }
-    .success { color: green; }
-    .error { color: red; }
-    /* Light theme (default) */
-    body.light {
-      background: #fff;
-      color: #333;
-    }
-    /* Dark theme */
-    body.dark {
-      background: #333;
-      color: #fff;
-    }
-    button, input, select {
-      padding: 8px;
-      margin: 5px;
-    }
-    a { color: #007bff; }
-    a:hover { color: #0056b3; }
-    /* Theme toggle button */
-    #theme-toggle {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      cursor: pointer;
-    }
-  </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#22c55e">
+  <title>{{ title or 'Sudoku Secure Pro' }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 </head>
-<body class="{{ session.theme | default('light') }}">
-  <button id="theme-toggle">Toggle Theme</button>
-  {% block content %}
-  {% endblock %}
-  {% block scripts %}
-  <script>
-    document.getElementById('theme-toggle').addEventListener('click', () => {
-      const body = document.body;
-      const isDark = body.classList.contains('dark');
-      body.classList.toggle('dark');
-      body.classList.toggle('light');
-      fetch('/set_theme', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ theme: isDark ? 'light' : 'dark' })
-      }).catch(error => console.error('Theme save failed:', error));
-    });
-    // Apply saved theme
-    const savedTheme = '{{ session.theme | default('light') }}';
-    document.body.classList.add(savedTheme);
-  </script>
-  {% endblock %}
+<body>
+  <div class="header">
+    <div class="brand">{{ config.APP_NAME }}</div>
+    <div>
+      <button id="installButton" class="btn secondary" style="display: none;">Install App</button>
+      <button class="theme-toggle" onclick="toggleTheme()">🌓 Theme</button>
+    </div>
+  </div>
+  <div class="container">{% block content %}{% endblock %}</div>
+  <footer>© {{ config.APP_NAME }} • <a href="#" id="installLink" onclick="promptInstall()">Install Offline App</a></footer>
+  {% block scripts %}{% endblock %}
+  <script src="{{ url_for('static', filename='js/pwa.js') }}"></script>
 </body>
 </html>
