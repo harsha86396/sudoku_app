@@ -1,16 +1,35 @@
-
-{% extends "base.html" %}
+{% extends 'base.html' %}
 {% block content %}
-<h2>Register</h2>
-<form method="post" class="card">
-  <label>Name <input type="text" name="name" required></label>
-  <label>Email <input type="email" name="email" required></label>
-  <label>Password <input type="password" name="password" required></label>
-  <fieldset>
-    <legend>CAPTCHA</legend>
+<div class="card" style="max-width: 480px; margin: auto;">
+  <h1>Create Account</h1>
+  
+  {% if msg %}
+  <div class="alert">{{ msg }}</div>
+  {% endif %}
+  
+  {% if err %}
+  <div class="alert err">{{ err }}</div>
+  {% endif %}
+  
+  <form action="/register" method="post">
+    <label>Name</label>
+    <input name="name" required>
+    
+    <label>Email</label>
+    <input name="email" type="email" required>
+    
+    <label>Password</label>
+    <input name="password" type="password" required>
+    
+    <label>CAPTCHA: {{ captcha_q }}</label>
+    <input name="captcha_answer" required>
     <input type="hidden" name="captcha_token" value="{{ captcha_t }}">
-    <label>{{ captcha_q }} <input type="text" name="captcha" placeholder="Answer" required></label>
-  </fieldset>
-  <button type="submit">Create account</button>
-</form>
+    
+    <button class="btn" type="submit" style="width: 100%; margin-top: 16px;">Register</button>
+  </form>
+  
+  <div style="margin-top: 20px; text-align: center;">
+    <a href="/login">Already have an account? Login</a>
+  </div>
+</div>
 {% endblock %}

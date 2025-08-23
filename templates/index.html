@@ -1,13 +1,27 @@
-
-{% extends "base.html" %}
+{% extends 'base.html' %}
 {% block content %}
-<article class="card">
-  <h2>Welcome to {{ brand }}</h2>
-  <p>Sharpen your brain with clean, fast Sudoku. Create an account to track your best times and climb the leaderboard.</p>
-  <p>
-    <a href="{{ url_for('play') }}" role="button">Play as Guest</a>
-    <a href="{{ url_for('register') }}" role="button" class="secondary">Register</a>
-    <a href="{{ url_for('login') }}" role="button" class="contrast">Login</a>
-  </p>
-</article>
+<div class="card">
+  <h1>Welcome to Sudoku Secure Pro</h1>
+  <p>Play Sudoku with secure authentication and track your progress on the leaderboard!</p>
+  
+  <div style="display: flex; gap: 20px; justify-content: center; margin-top: 30px; flex-wrap: wrap;">
+    <div class="card" style="text-align: center; flex: 1; min-width: 250px;">
+      <h2>Existing User</h2>
+      <p>Login to your account</p>
+      <a class="btn secondary" href="/login">Login</a>
+    </div>
+    
+    <div class="card" style="text-align: center; flex: 1; min-width: 250px;">
+      <h2>New User</h2>
+      <p>Create a new account</p>
+      <a class="btn" href="/register">Register</a>
+    </div>
+    
+    <div class="card" style="text-align: center; flex: 1; min-width: 250px;">
+      <h2>Guest Mode</h2>
+      <p>Play without saving progress</p>
+      <a class="btn" href="/guest_login" onclick="return confirm('In guest mode, your progress will not be saved and you cannot access leaderboard features. Continue?')">Play as Guest</a>
+    </div>
+  </div>
+</div>
 {% endblock %}
