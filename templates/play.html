@@ -15,19 +15,15 @@
     <button class="btn danger" onclick="restart()">Restart</button>
   </div>
   <div id="board" class="sudoku-container"></div>
-  <div class="controls">
-    <button class="btn" onclick="setDigit(1)">1</button>
-    <button class="btn" onclick="setDigit(2)">2</button>
-    <button class="btn" onclick="setDigit(3)">3</button>
-    <button class="btn" onclick="setDigit(4)">4</button>
-    <button class="btn" onclick="setDigit(5)">5</button>
-    <button class="btn" onclick="setDigit(6)">6</button>
-    <button class="btn" onclick="setDigit(7)">7</button>
-    <button class="btn" onclick="setDigit(8)">8</button>
-    <button class="btn" onclick="setDigit(9)">9</button>
-    <button class="btn secondary" onclick="erase()">Erase</button>
+  
+  <div style="margin: 16px 0;">
+    <p class="small"><strong>How to play:</strong></p>
+    <p class="small">• Click on a cell to select it</p>
+    <p class="small">• Use number keys (1-9) to enter numbers</p>
+    <p class="small">• Press Backspace/Delete to clear a cell</p>
+    <p class="small">• Gray cells are pre-filled and cannot be changed</p>
   </div>
-  <p class="small">Click on a cell and use number keys (1-9) or buttons above</p>
+  
   <p class="small">"Sudoku powered by Harsha Enterprises"</p>
   <a class="btn secondary" href="/dashboard">Back to Dashboard</a>
 </div>
@@ -52,9 +48,9 @@ function makeCell(r,c,val,prefilled){
   d.textContent = val ? val : '';
   d.onclick = () => { 
     if(!prefilled){ 
-      if(selected) selected.style.outline='none'; 
+      if(selected) selected.style.outline = 'none'; 
       selected = d; 
-      d.style.outline='2px solid var(--accent)'; 
+      d.style.outline = '2px solid var(--accent)'; 
     } 
   };
   return d;
