@@ -1,21 +1,19 @@
-{% extends 'base.html' %}
+
+{% extends "base.html" %}
 {% block content %}
-<div class="card">
-<h1>🏆 Leaderboard</h1>
-<p class="small">Fastest all-time bests</p>
-<table class="table">
-  <thead><tr><th>#</th><th>Name</th><th>Best (s)</th><th>Games</th></tr></thead>
-  <tbody>
-  {% for i,row in enumerate(rows, start=1) %}
-    <tr>
-      <td>{{ i }}</td>
-      <td>{{ row[0] }}</td>
-      <td>{{ row[1] }}</td>
-      <td>{{ row[2] }}</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-<a class="btn secondary" href="/dashboard">Back to Dashboard</a>
-</div>
+<h2>Leaderboard (Best times)</h2>
+<article class="card">
+  {% if rows %}
+  <table>
+    <thead><tr><th>#</th><th>Player</th><th>Best Seconds</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr><td>{{ loop.index }}</td><td>{{ r['name'] }}</td><td>{{ r['best'] }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p>No results yet. Be the first!</p>
+  {% endif %}
+</article>
 {% endblock %}

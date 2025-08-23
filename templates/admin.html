@@ -1,0 +1,17 @@
+
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin</h2>
+<article class="card">
+  <p>Total games: <strong>{{ total_games }}</strong></p>
+  <h3>Recent users</h3>
+  <table>
+    <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Verified</th><th>Joined</th></tr></thead>
+    <tbody>
+      {% for u in users %}
+      <tr><td>{{ u['id'] }}</td><td>{{ u['name'] }}</td><td>{{ u['email'] }}</td><td>{{ u['email_verified'] }}</td><td>{{ u['created_at'] }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</article>
+{% endblock %}

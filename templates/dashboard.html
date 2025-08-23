@@ -1,20 +1,26 @@
-{% extends 'base.html' %}
+
+{% extends "base.html" %}
 {% block content %}
-<div class="card">
-  <h1>Hello, {{ name }} 👋</h1>
-  <nav style="margin:8px 0 16px 0">
-    <a href="/play">🧩 Play Sudoku</a> •
-    <a href="/leaderboard">🏆 Leaderboard</a> •
-    <a href="/download_history">⬇ Download Last 7 Days (PDF)</a> •
-    <a href="/logout">🚪 Logout</a>
-  </nav>
-  <p class="small">Tip: Beat your best time to climb the leaderboard!</p>
-  
-  {% if session.guest %}
-  <div class="alert">
-    <strong>Guest Mode:</strong> Your progress will not be saved and you cannot access leaderboard features.
-    <a href="/register" style="color: var(--text); text-decoration: underline;">Create an account</a> to save your progress.
-  </div>
-  {% endif %}
+<h2>Dashboard</h2>
+<div class="grid-3">
+  <article class="card">
+    <h3>Your best time</h3>
+    <p style="font-size:2rem">{{ best if best else "—" }}</p>
+  </article>
+  <article class="card" style="grid-column: span 2;">
+    <h3>Recent games</h3>
+    {% if recent %}
+    <table>
+      <thead><tr><th>Difficulty</th><th>Seconds</th><th>When</th></tr></thead>
+      <tbody>
+        {% for r in recent %}
+        <tr><td>{{ r['difficulty'] }}</td><td>{{ r['seconds'] }}</td><td>{{ r['created_at'] }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p>No games yet. <a href="{{ url_for('play') }}">Play now</a>.</p>
+    {% endif %}
+  </article>
 </div>
 {% endblock %}

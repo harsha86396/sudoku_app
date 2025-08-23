@@ -1,26 +1,44 @@
+
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <title>{{ brand }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#22c55e">
-  <title>{{ title or 'Sudoku Secure Pro' }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <link rel="manifest" href="{{ url_for('serve_manifest') }}">
-  <link rel="icon" href="{{ url_for('static', filename='icon-192.png') }}">
-  <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+  <link href="https://unpkg.com/@picocss/pico@1.5.10/css/pico.min.css" rel="stylesheet">
+  <style>
+    body { max-width: 960px; margin: auto; }
+    header { margin: 1rem 0; }
+    .card { padding: 1rem; border-radius: 12px; box-shadow: 0 3px 12px rgba(0,0,0,.08); }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .sudoku { display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; max-width: 420px; }
+    .sudoku input { text-align: center; font-size: 20px; padding: .6rem .2rem; }
+    footer { color: #666; margin-top: 2rem; }
+    .success { color: green; }
+    .error { color: #b00020; }
+    nav a { margin-right: 1rem; }
+  </style>
 </head>
 <body>
-  <div class="header">
-    <div class="brand">{{ config.APP_NAME }}</div>
-    <div>
-      <button id="installButton" class="btn secondary" style="display: none; margin-right: 10px;">Install App</button>
-      <button class="theme-toggle" onclick="toggleTheme()">🌓 Theme</button>
-    </div>
-  </div>
-  <div class="container">{% block content %}{% endblock %}</div>
-  <footer>© {{ config.APP_NAME }} • <a href="#" id="installLink" onclick="promptInstall()">Install Offline App</a></footer>
-  {% block scripts %}{% endblock %}
-  <script src="{{ url_for('static', filename='js/pwa.js') }}"></script>
+<header>
+  <nav>
+    <strong>{{ brand }}</strong>
+    <span style="float:right">
+      {% if session.get('user_id') %}Hi {{ session.get('name') }} · <a href="{{ url_for('dashboard') }}">Dashboard</a> · <a href="{{ url_for('play') }}">Play</a> · <a href="{{ url_for('leaderboard') }}">Leaderboard</a> · <a href="{{ url_for('logout') }}">Logout</a>
+      {% elif session.get('admin') %}<a href="{{ url_for('admin') }}">Admin</a> · <a href="{{ url_for('logout') }}">Logout</a>
+      {% else %}<a href="{{ url_for('login') }}">Login</a> · <a href="{{ url_for('register') }}">Register</a>{% endif %}
+    </span>
+  </nav>
+</header>
+
+<main>
+  {% if msg %}<p class="success">{{ msg }}</p>{% endif %}
+  {% if err %}<p class="error">{{ err }}</p>{% endif %}
+  {% block content %}{% endblock %}
+</main>
+
+<footer>
+  <small>&copy; {{ 2025 }} Harsha Enterprises</small>
+</footer>
 </body>
 </html>
