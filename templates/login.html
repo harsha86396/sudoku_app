@@ -1,26 +1,37 @@
 {% extends 'base.html' %}
 {% block content %}
+<div class="card" style="max-width: 480px; margin: auto;">
   <h1>Login</h1>
-  <form method="post" action="{{ url_for('login') }}">
-    {{ form.hidden_tag() }}
-    <p>
-      {{ form.email.label }}<br>
-      {{ form.email() }}
-    </p>
-    <p>
-      {{ form.password.label }}<br>
-      {{ form.password() }}
-    </p>
-    <p>
-      <label for="captcha">{{ captcha_q }} = </label>
-      {{ form.captcha() }}
-    </p>
-    <p>{{ form.submit() }}</p>
+  
+  {% if msg %}
+  <div class="alert">{{ msg }}</div>
+  {% endif %}
+  
+  {% if err %}
+  <div class="alert err">{{ err }}</div>
+  {% endif %}
+  
+  <form action="/login" method="post">
+    <label>Email</label>
+    <input name="email" type="email" required>
+    
+    <label>Password</label>
+    <input name="password" type="password" required>
+    
+    <button class="btn secondary" type="submit" style="width: 100%; margin-top: 16px;">Login</button>
   </form>
-  <p><a href="{{ url_for('register') }}">Register</a> | <a href="{{ url_for('forgot_password') }}">Forgot Password?</a> | <a href="{{ url_for('admin_login') }}">Admin Login</a></p>
-  <form method="post" action="{{ url_for('guest') }}">
-    <p><input type="submit" value="Play as Guest"></p>
-  </form>
-  <p class="success">{{ msg }}</p>
-  <p class="error">{{ err }}</p>
+  
+  <div style="margin-top: 20px; text-align: center;">
+    <a href="/forgot_password">Forgot Password?</a> • 
+    <a href="/register">Create Account</a> • 
+    <a href="/admin">Admin Login</a>
+  </div>
+  
+  <hr style="margin: 20px 0;">
+  
+  <div style="text-align: center;">
+    <p>Don't want to create an account?</p>
+    <a class="btn" href="/guest_login" onclick="return confirm('In guest mode, your progress will not be saved and you cannot access leaderboard features. Continue?')">Play as Guest</a>
+  </div>
+</div>
 {% endblock %}
