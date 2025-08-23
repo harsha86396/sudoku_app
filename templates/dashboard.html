@@ -1,9 +1,20 @@
 {% extends 'base.html' %}
 {% block content %}
-  <h1>Dashboard</h1>
-  <p>Welcome, {{ name }}!</p>
-  <p><a href="{{ url_for('play') }}">Play</a></p>
-  <p><a href="{{ url_for('leaderboard') }}">Leaderboard</a></p>
-  <p><a href="{{ url_for('download_pdf') }}">Download Last 7 Days PDF</a></p>
-  <p><a href="{{ url_for('logout') }}">Logout</a></p>
+<div class="card">
+  <h1>Hello, {{ name }} 👋</h1>
+  <nav style="margin:8px 0 16px 0">
+    <a href="/play">🧩 Play Sudoku</a> •
+    <a href="/leaderboard">🏆 Leaderboard</a> •
+    <a href="/download_history">⬇ Download Last 7 Days (PDF)</a> •
+    <a href="/logout">🚪 Logout</a>
+  </nav>
+  <p class="small">Tip: Beat your best time to climb the leaderboard!</p>
+  
+  {% if session.guest %}
+  <div class="alert">
+    <strong>Guest Mode:</strong> Your progress will not be saved and you cannot access leaderboard features.
+    <a href="/register" style="color: var(--text); text-decoration: underline;">Create an account</a> to save your progress.
+  </div>
+  {% endif %}
+</div>
 {% endblock %}
