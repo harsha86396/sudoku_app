@@ -11,8 +11,10 @@ services:
       - key: DATABASE_URL
         value: postgresql://neondb_owner:npg_SWxD3PZ4IMof@ep-damp-mouse-a1pq9omm-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
       - key: SECRET_KEY
-        generateValue: true
+        value: cc6fee6dbb4115889f731eac95495f2a72435619ce27d4859d50b1d273dce78c
       - key: EMAIL_ENABLED
         value: false
       - key: DIGEST_ENABLED
+        value: false
+      - key: DEBUG
         value: false
