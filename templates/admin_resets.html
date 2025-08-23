@@ -1,11 +1,20 @@
 {% extends 'base.html' %}
 {% block content %}
-  <h1>Password Resets</h1>
-  <table border="1">
-    <tr><th>ID</th><th>User ID</th><th>Expires At</th><th>Created At</th></tr>
-    {% for reset in resets %}
-      <tr><td>{{ reset.id }}</td><td>{{ reset.user_id }}</td><td>{{ reset.expires_at }}</td><td>{{ reset.created_at }}</td></tr>
-    {% endfor %}
+<div class="card">
+  <h2>Password Reset Attempts</h2>
+  <table class="table">
+    <thead><tr><th>ID</th><th>User ID</th><th>Expires At</th><th>Created At</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+        <tr>
+          <td>{{ r[0] }}</td>
+          <td>{{ r[1] }}</td>
+          <td>{{ r[2] }}</td>
+          <td>{{ r[3] }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
   </table>
-  <p><a href="{{ url_for('admin_dashboard') }}">Back to Admin Dashboard</a></p>
+  <a class="btn secondary" href="/admin">Back to Dashboard</a>
+</div>
 {% endblock %}
