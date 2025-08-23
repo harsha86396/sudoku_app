@@ -1,11 +1,22 @@
 {% extends 'base.html' %}
 {% block content %}
-  <h1>Users</h1>
-  <table border="1">
-    <tr><th>ID</th><th>Name</th><th>Email</th><th>Games Played</th><th>Best Time (s)</th></tr>
-    {% for row in rows %}
-      <tr><td>{{ row.id }}</td><td>{{ row.name }}</td><td>{{ row.email }}</td><td>{{ row.games }}</td><td>{{ row.best }}</td></tr>
-    {% endfor %}
+<div class="card">
+  <h2>Users</h2>
+  <table class="table">
+    <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Games</th><th>Best(s)</th><th>Joined</th></tr></thead>
+    <tbody>
+      {% for u in rows %}
+        <tr>
+          <td>{{ u[0] }}</td>
+          <td>{{ u[1] }}</td>
+          <td>{{ u[2] }}</td>
+          <td>{{ u[3] }}</td>
+          <td>{{ u[4] or '-' }}</td>
+          <td>{{ u[5] }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
   </table>
-  <p><a href="{{ url_for('admin_dashboard') }}">Back to Admin Dashboard</a></p>
+  <a class="btn secondary" href="/admin">Back to Dashboard</a>
+</div>
 {% endblock %}
