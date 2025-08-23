@@ -1,10 +1,7 @@
-from flask import Flask
 
-app = Flask(__name__)
+from app import create_app
+app = create_app()
 
-@app.route("/")
-def home():
-    return "Sudoku App is running on Render!"
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+# For Render/WSGI
+if __name__ != "__main__":
+    application = app
