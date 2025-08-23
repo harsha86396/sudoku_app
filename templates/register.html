@@ -1,26 +1,35 @@
 {% extends 'base.html' %}
 {% block content %}
-  <h1>Register</h1>
-  <form method="post" action="{{ url_for('register') }}">
-    {{ form.hidden_tag() }}
-    <p>
-      {{ form.name.label }}<br>
-      {{ form.name() }}
-    </p>
-    <p>
-      {{ form.email.label }}<br>
-      {{ form.email() }}
-    </p>
-    <p>
-      {{ form.password.label }}<br>
-      {{ form.password() }}
-    </p>
-    <p>
-      <label for="captcha">{{ captcha_q }} = </label>
-      {{ form.captcha() }}
-    </p>
-    <p>{{ form.submit() }}</p>
+<div class="card" style="max-width: 480px; margin: auto;">
+  <h1>Create Account</h1>
+  
+  {% if msg %}
+  <div class="alert">{{ msg }}</div>
+  {% endif %}
+  
+  {% if err %}
+  <div class="alert err">{{ err }}</div>
+  {% endif %}
+  
+  <form action="/register" method="post">
+    <label>Name</label>
+    <input name="name" required>
+    
+    <label>Email</label>
+    <input name="email" type="email" required>
+    
+    <label>Password</label>
+    <input name="password" type="password" required>
+    
+    <label>CAPTCHA: {{ captcha_q }}</label>
+    <input name="captcha_answer" required>
+    <input type="hidden" name="captcha_token" value="{{ captcha_t }}">
+    
+    <button class="btn" type="submit" style="width: 100%; margin-top: 16px;">Register</button>
   </form>
-  <p><a href="{{ url_for('index') }}">Back to Login</a></p>
-  <p class="error">{{ session.pop('err', '') }}</p>
+  
+  <div style="margin-top: 20px; text-align: center;">
+    <a href="/login">Already have an account? Login</a>
+  </div>
+</div>
 {% endblock %}
