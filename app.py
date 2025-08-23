@@ -9,14 +9,19 @@ from utils.sudoku import make_puzzle
 from utils.pdf_utils import generate_last7_pdf
 import threading, schedule
 import config as config
-from database import get_db, init_db
 
 # Load environment variables
 load_dotenv()
 
+# Import database functions after environment is loaded
+from database import get_db, init_db
+
 app = Flask(__name__)
 app.config.from_object(config)
-app.secret_key = os.environ.get('SECRET_KEY', config.SECRET_KEY)
+
+# Set secret key from environment or config
+secret_key = os.environ.get('SECRET_KEY') or config.SECRET_KEY
+app.secret_key = secret_key
 
 def send_email(to_email, subject, body, user_id=None):
     if not app.config.get('EMAIL_ENABLED'):
