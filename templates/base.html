@@ -7,13 +7,14 @@
   <title>{{ title or 'Sudoku Secure Pro' }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <link rel="icon" href="{{ url_for('static', filename='icon-192.png') }}">
   <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 </head>
 <body>
   <div class="header">
     <div class="brand">{{ config.APP_NAME }}</div>
     <div>
-      <button id="installButton" class="btn secondary" style="display: none;">Install App</button>
+      <button id="installButton" class="btn secondary" style="display: none; margin-right: 10px;">Install App</button>
       <button class="theme-toggle" onclick="toggleTheme()">🌓 Theme</button>
     </div>
   </div>
