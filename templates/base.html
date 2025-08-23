@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#22c55e">
   <title>{{ title or 'Sudoku Secure Pro' }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <link rel="manifest" href="{{ url_for('serve_manifest') }}">
   <link rel="icon" href="{{ url_for('static', filename='icon-192.png') }}">
   <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 </head>
