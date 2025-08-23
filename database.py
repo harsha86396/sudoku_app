@@ -1,69 +1,47 @@
-
-import os
-import sqlite3
-from datetime import datetime, timedelta
-
-DB_PATH = os.environ.get("DB_PATH") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "sudoku.db")
+import psycopg2
+import psycopg2.extras
+from flask import g
+from config import DATABASE_URL
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
-    conn.row_factory = sqlite3.Row
-    return conn
+    if "db" not in g:
+        g.db = psycopg2.connect(DATABASE_URL, sslmode="require")
+    return g.db
+
+def close_db(e=None):
+    db = g.pop("db", None)
+    if db is not None:
+        db.close()
 
 def init_db():
-    conn = get_db()
-    cur = conn.cursor()
-    # Users
+    db = get_db()
+    cur = db.cursor()
     cur.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        email VARCHAR(120) UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        verified BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
     """)
-    # Games
     cur.execute("""
-        CREATE TABLE IF NOT EXISTS games (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            seconds INTEGER NOT NULL,
-            played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )
+    CREATE TABLE IF NOT EXISTS leaderboard (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(50) NOT NULL,
+        score INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
     """)
-    # Email logs (non-blocking)
     cur.execute("""
-        CREATE TABLE IF NOT EXISTS email_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            to_email TEXT NOT NULL,
-            subject TEXT NOT NULL,
-            status TEXT NOT NULL,
-            detail TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+    CREATE TABLE IF NOT EXISTS otps (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(120) NOT NULL,
+        otp VARCHAR(6) NOT NULL,
+        expiry TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
     """)
-    # Password resets
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS password_resets (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            otp TEXT NOT NULL,
-            expires_at TIMESTAMP NOT NULL,
-            used INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )
-    """)
-    # OTP rate-limit (separate from login!)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS otp_rate_limit (
-            email TEXT PRIMARY KEY,
-            last_request_ts REAL
-        )
-    """)
-    conn.commit()
+    db.commit()
     cur.close()
-    conn.close()
