@@ -1,1 +1,13 @@
-.env pycache/ *.pyc sudoku.db leaderboard.pdf
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.env
+*.sqlite3
+instance/
+.DS_Store
+*.log
