@@ -441,6 +441,15 @@ def admin_resets():
     conn.close()
     return render_template('admin_resets.html', rows=rows)
 
+# ---------- PWA Routes ----------
+@app.route('/sw.js')
+def serve_sw():
+    return send_file('sw.js', mimetype='application/javascript')
+
+@app.route('/manifest.json')
+def serve_manifest():
+    return send_file('manifest.json', mimetype='application/json')
+
 # ---------- Weekly digest scheduler ----------
 def send_weekly_digest():
     if not app.config.get('EMAIL_ENABLED') or not app.config.get('DIGEST_ENABLED'): return
