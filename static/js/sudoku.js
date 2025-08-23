@@ -1,6 +1,31 @@
 // Enhanced Sudoku game JavaScript with 3x3 grid styling
-function drawBoard() {
-  const board = document.getElementById('board');
+let puzzle = [];
+let solution = [];
+let selected = null;
+let startTime = null;
+let timerInterval = null;
+let hintsLeft = 3;
+let original = [];
+
+function $(id){ return document.getElementById(id); }
+
+function makeCell(r,c,val,prefilled){
+  const d = document.createElement('div');
+  d.className = 'cell' + (prefilled ? ' prefilled' : '');
+  d.dataset.r = r; d.dataset.c = c;
+  d.textContent = val ? val : '';
+  d.onclick = () => { 
+    if(!prefilled){ 
+      if(selected) selected.style.outline='none'; 
+      selected = d; 
+      d.style.outline='2px solid var(--accent)'; 
+    } 
+  };
+  return d;
+}
+
+function drawBoard(){
+  const board = $('board');
   board.innerHTML = '';
   
   // Create the 3x3 container grid
@@ -8,11 +33,6 @@ function drawBoard() {
     for (let boxCol = 0; boxCol < 3; boxCol++) {
       const box = document.createElement('div');
       box.className = 'sudoku-box';
-      box.style.display = 'grid';
-      box.style.gridTemplateColumns = 'repeat(3, 1fr)';
-      box.style.gap = '2px';
-      box.style.border = '2px solid var(--muted)';
-      box.style.padding = '2px';
       
       // Fill the box with cells
       for (let r = 0; r < 3; r++) {
@@ -29,75 +49,141 @@ function drawBoard() {
   }
 }
 
-// Update CSS for the new layout
-[file name]: static/css/style.css
-```css
-/* Add to existing CSS */
-.sudoku-container {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  max-width: 500px;
-  margin: 0 auto;
+async function newPuzzle(){
+  hintsLeft = 3; $('hints-left').textContent = hintsLeft;
+  const diff = $('difficulty').value;
+  const resp = await fetch('/api/new_puzzle?difficulty=' + diff);
+  const data = await resp.json();
+  puzzle = data.puzzle;
+  solution = data.solution;
+  original = JSON.parse(JSON.stringify(puzzle));
+  startTimer();
+  drawBoard();
 }
 
-.sudoku-box {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  border: 2px solid var(--muted);
-  padding: 2px;
-  background-color: var(--muted);
+function startTimer(){
+  if(timerInterval) clearInterval(timerInterval);
+  startTime = Date.now();
+  timerInterval = setInterval(()=>{
+    $('timer').textContent = Math.floor((Date.now() - startTime)/1000);
+  }, 500);
 }
 
-.cell {
-  width: 100%;
-  aspect-ratio: 1;
-  background: var(--cell);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 1.2rem;
-  user-select: none;
-  border: 1px solid var(--muted);
+function setDigit(n){
+  if(!selected) return;
+  const r = parseInt(selected.dataset.r), c = parseInt(selected.dataset.c);
+  if(original[r][c] !== 0) return;
+  selected.textContent = n;
+  puzzle[r][c] = n;
+  validateCell(selected, r, c);
+  checkSolved();
 }
 
-/* Responsive design */
-@media (max-width: 600px) {
-  .sudoku-container {
-    grid-template-columns: 1fr;
-    max-width: 300px;
+function erase(){
+  if(!selected) return;
+  const r = parseInt(selected.dataset.r), c = parseInt(selected.dataset.c);
+  if(original[r][c] !== 0) return;
+  selected.textContent = '';
+  selected.classList.remove('error');
+  puzzle[r][c] = 0;
+}
+
+function validateCell(cell, r, c){
+  if(puzzle[r][c] === 0){ cell.classList.remove('error'); return; }
+  if(puzzle[r][c] !== solution[r][c]){
+    cell.classList.add('error');
+  } else {
+    cell.classList.remove('error');
   }
+}
+
+function isSolved(){
+  for(let r=0;r<9;r++){
+    for(let c=0;c<9;c++){
+      if(puzzle[r][c] !== solution[r][c]) return false;
+    }
+  }
+  return true;
+}
+
+async function checkSolved(){
+  if(isSolved()){
+    clearInterval(timerInterval);
+    const seconds = Math.floor((Date.now() - startTime)/1000);
+    alert('🎉 Solved in ' + seconds + ' seconds!');
+    
+    // Only post to leaderboard if not in guest mode
+    if(!window.isGuestMode){
+      try{
+        const res = await fetch('/api/record_result', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({seconds})
+        });
+        const j = await res.json();
+        if(j.status === 'ok'){
+          alert('Result recorded! Your best: ' + j.best_time + 's. Rank: #' + j.rank);
+          window.location.href = '/leaderboard';
+        } else {
+          alert('Result not recorded: ' + (j.error || 'Unknown error'));
+        }
+      }catch(e){
+        console.error(e);
+        alert('Failed to post result.');
+      }
+    }
+  }
+}
+
+async function getHint(){
+  if(hintsLeft <= 0){ alert('No hints left.'); return; }
+  const res = await fetch('/api/hint', {method:'POST'});
+  const j = await res.json();
+  if(j.error){ alert(j.error); return; }
+  const {r,c,val} = j;
+  const board = $('board');
+  const boxes = board.getElementsByClassName('sudoku-box');
+  const boxRow = Math.floor(r / 3);
+  const boxCol = Math.floor(c / 3);
+  const cellRow = r % 3;
+  const cellCol = c % 3;
+  const box = boxes[boxRow * 3 + boxCol];
+  const cell = box.children[cellRow * 3 + cellCol];
+  puzzle[r][c] = val;
+  original[r][c] = val; // lock it
+  cell.textContent = val;
+  cell.classList.add('prefilled');
+  hintsLeft = j.hints_left;
+  $('hints-left').textContent = hintsLeft;
+  checkSolved();
+}
+
+function restart(){
+  puzzle = JSON.parse(JSON.stringify(original));
+  drawBoard();
+  startTimer();
+}
+
+// Initialize game when page loads
+window.addEventListener('DOMContentLoaded', ()=>{
+  // Check if we're in guest mode
+  window.isGuestMode = window.location.pathname.includes('guest') || sessionStorage.getItem('guestMode') === 'true';
   
-  .cell {
-    font-size: 1rem;
-  }
-}
+  newPuzzle();
+  const isLight = document.documentElement.classList.contains('light');
+  document.getElementById('theme-name').textContent = isLight ? 'Light' : 'Dark';
+});
 
-/* System preference based theme */
-@media (prefers-color-scheme: light) {
-  :root:not(.dark) {
-    --bg: #f5f7fb;
-    --panel: #ffffff;
-    --text: #0f172a;
-    --accent: #16a34a;
-    --muted: #4b5563;
-    --danger: #b91c1c;
-    --cell: #eef2ff;
-    --link: #0369a1;
+// Keyboard support for number input
+document.addEventListener('keydown', (e) => {
+  if (e.key >= '1' && e.key <= '9') {
+    setDigit(parseInt(e.key));
+  } else if (e.key === 'Backspace' || e.key === 'Delete') {
+    erase();
+  } else if (e.key === 'h' || e.key === 'H') {
+    getHint();
+  } else if (e.key === 'r' || e.key === 'R') {
+    restart();
+  } else if (e.key === 'n' || e.key === 'N') {
+    newPuzzle();
   }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not(.light) {
-    --bg: #0f172a;
-    --panel: #111827;
-    --text: #e5e7eb;
-    --accent: #22c55e;
-    --muted: #94a3b8;
-    --danger: #ef4444;
-    --cell: #0b1220;
-    --link: #38bdf8;
-  }
-}
+});
