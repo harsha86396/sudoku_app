@@ -5,7 +5,8 @@ SMTP_PORT = 587
 SMTP_USER = "harsha86396@gmail.com"
 SMTP_PASS = "mstxbkcvhtstpncp"  # Gmail App Password you provided
 
-SECRET_KEY = "please-change-this-very-secret-key-in-production"
+# Secret key will be loaded from environment variable
+SECRET_KEY = "cc6fee6dbb4115889f731eac95495f2a72435619ce27d4859d50b1d273dce78c"
 APP_NAME = "Sudoku powered by Harsha Enterprises"
 
 # Admin panel credentials
