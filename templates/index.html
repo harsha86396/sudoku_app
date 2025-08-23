@@ -1,59 +1,27 @@
 {% extends 'base.html' %}
 {% block content %}
-  <h1>Welcome to {{ config.APP_NAME }}</h1>
-  <p>Theme: <span id="theme">Light</span></p>
-  {% if msg %}
-    <p class="success">{{ msg }}</p>
-  {% endif %}
-  {% if err %}
-    <p class="error">{{ err }}</p>
-  {% endif %}
-  <h2>Create account</h2>
-  <form method="POST" action="{{ url_for('register') }}" onsubmit="return validateForm(event, 'register')">
-    <label for="name">Name:</label>
-    <input type="text" id="name" name="name" required>
-    <label for="email">Email:</label>
-    <input type="email" id="email" name="email" required>
-    <label for="password">Password:</label>
-    <input type="password" id="password" name="password" required>
-    <label for="captcha">CAPTCHA: {{ captcha_q }} = </label>
-    <input type="text" id="captcha" name="captcha" required>
-    <button type="submit">Register</button>
-  </form>
-  <h2>Login</h2>
-  <form method="POST" action="{{ url_for('login') }}" onsubmit="return validateForm(event, 'login')">
-    <label for="login_email">Email:</label>
-    <input type="email" id="login_email" name="email" required>
-    <label for="login_password">Password:</label>
-    <input type="password" id="login_password" name="password" required>
-    <button type="submit">Login</button>
-  </form>
-  <p>
-    <a href="{{ url_for('forgot_password') }}">Forgot password?</a> · 
-    <a href="{{ url_for('admin') }}">Admin</a>
-  </p>
-{% endblock %}
-{% block scripts %}
-  <script>
-    function validateForm(event, formType) {
-      event.preventDefault();
-      const form = event.target;
-      const inputs = formType === 'register' 
-        ? [form.querySelector('#name'), form.querySelector('#email'), form.querySelector('#password'), form.querySelector('#captcha')]
-        : [form.querySelector('#login_email'), form.querySelector('#login_password')];
-      let valid = true;
-      inputs.forEach(input => {
-        if (!input) return;
-        input.value = input.value.trim();
-        if (!input.value) {
-          valid = false;
-          alert('All fields are required');
-        }
-      });
-      if (valid) {
-        form.submit();
-      }
-      return valid;
-    }
-  </script>
+<div class="card">
+  <h1>Welcome to Sudoku Secure Pro</h1>
+  <p>Play Sudoku with secure authentication and track your progress on the leaderboard!</p>
+  
+  <div style="display: flex; gap: 20px; justify-content: center; margin-top: 30px;">
+    <div class="card" style="text-align: center;">
+      <h2>Existing User</h2>
+      <p>Login to your account</p>
+      <a class="btn secondary" href="/login">Login</a>
+    </div>
+    
+    <div class="card" style="text-align: center;">
+      <h2>New User</h2>
+      <p>Create a new account</p>
+      <a class="btn" href="/register">Register</a>
+    </div>
+    
+    <div class="card" style="text-align: center;">
+      <h2>Guest Mode</h2>
+      <p>Play without saving progress</p>
+      <a class="btn" href="/guest_login" onclick="return confirm('In guest mode, your progress will not be saved and you cannot access leaderboard features. Continue?')">Play as Guest</a>
+    </div>
+  </div>
+</div>
 {% endblock %}
