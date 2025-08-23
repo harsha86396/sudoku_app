@@ -2,6 +2,17 @@ services:
   - type: web
     name: sudoku-secure-pro
     env: python
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn main:app"
     plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_SWxD3PZ4IMof@ep-damp-mouse-a1pq9omm-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+      - key: SECRET_KEY
+        generateValue: true
+      - key: EMAIL_ENABLED
+        value: false
+      - key: DIGEST_ENABLED
+        value: false
