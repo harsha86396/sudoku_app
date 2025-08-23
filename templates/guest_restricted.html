@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card" style="max-width: 500px; margin: auto; text-align: center;">
+  <h1>🔒 Feature Not Available</h1>
+  <p>This feature is not available in Guest Mode.</p>
+  <p>Please <a href="/register">create an account</a> or <a href="/login">login</a> to access this feature.</p>
+  <div style="margin-top: 20px;">
+    <a class="btn" href="/register">Create Account</a>
+    <a class="btn secondary" href="/login" style="margin-left: 10px;">Login</a>
+    <a class="btn" href="/play" style="margin-left: 10px;">Continue as Guest</a>
+  </div>
+</div>
+{% endblock %}
