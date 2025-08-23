@@ -13,7 +13,7 @@ import config as config
 # Load environment variables
 load_dotenv()
 
-# Import database functions after environment is loaded
+# Import database functions
 from database import get_db, init_db
 
 app = Flask(__name__)
@@ -41,8 +41,7 @@ def send_email(to_email, subject, body, user_id=None):
         cur = conn.cursor()
         cur.execute('INSERT INTO sent_emails(user_id,email,subject,body) VALUES(?,?,?,?)',
                     (user_id, to_email, subject, body))
-        if not hasattr(conn, 'pgconn'):  # SQLite
-            conn.commit()
+        conn.commit()
         cur.close()
         conn.close()
         return True
@@ -50,7 +49,6 @@ def send_email(to_email, subject, body, user_id=None):
         print('Email error:', e)
         return False
 
-# ---------- Helpers ----------
 def new_captcha():
     a, b = random.randint(1,9), random.randint(1,9)
     token = f"{random.randint(100000,999999)}"
@@ -63,7 +61,7 @@ def check_captcha(token, answer):
     correct = session.get(key)
     if not correct: return False
     ok = correct.strip() == answer.strip()
-    session.pop(key, None)  # one-time
+    session.pop(key, None)
     return ok
 
 def rate_limit_ok(email):
@@ -80,13 +78,11 @@ def rate_limit_ok(email):
         cur.execute('UPDATE otp_rate_limit SET last_request_ts=? WHERE email=?', (now,email))
     else:
         cur.execute('INSERT INTO otp_rate_limit(email,last_request_ts) VALUES(?,?)',(email,now))
-    if not hasattr(conn, 'pgconn'):  # SQLite
-        conn.commit()
+    conn.commit()
     cur.close()
     conn.close()
     return True, 0
 
-# ---------- Routes ----------
 @app.route('/')
 def index():
     if 'user_id' in session: 
@@ -135,8 +131,7 @@ def register():
     cur = conn.cursor()
     try:
         cur.execute('INSERT INTO users(name,email,password_hash) VALUES(?,?,?)', (name,email,pw_hash))
-        if not hasattr(conn, 'pgconn'):  # SQLite
-            conn.commit()
+        conn.commit()
         send_email(email, 'Welcome to Sudoku', f'Hello {name}, your account has been created.', None)
         q,t = new_captcha()
         return render_template('login.html', msg='Registration successful. Please log in.', captcha_q=q, captcha_t=t)
@@ -178,7 +173,6 @@ def dashboard():
         return redirect(url_for('index'))
     return render_template('dashboard.html', name=session['name'], title='Dashboard')
 
-# ---------- Forgot / Reset Password (OTP + rate limit + resend) ----------
 def create_and_send_otp(user_id, email, name):
     otp = f"{random.randint(0, 999999):06d}"
     otp_hash = generate_password_hash(otp)
@@ -187,8 +181,7 @@ def create_and_send_otp(user_id, email, name):
     cur = conn.cursor()
     cur.execute('INSERT INTO password_resets(user_id, otp_hash, expires_at) VALUES(?,?,?)',
                 (user_id, otp_hash, expires))
-    if not hasattr(conn, 'pgconn'):  # SQLite
-        conn.commit()
+    conn.commit()
     cur.close()
     conn.close()
     body = f"""Hi {name},
@@ -275,15 +268,13 @@ def reset_password():
     new_hash = generate_password_hash(password)
     cur.execute('UPDATE users SET password_hash=? WHERE id=?', (new_hash, uid))
     cur.execute('DELETE FROM password_resets WHERE user_id=?', (uid,))
-    if not hasattr(conn, 'pgconn'):  # SQLite
-        conn.commit()
+    conn.commit()
     cur.close()
     conn.close()
     send_email(email, 'Password Changed', f'Hi {name}, your password was reset successfully.', uid)
     q,t = new_captcha()
     return render_template('login.html', msg='Password reset successful. Please log in.', captcha_q=q, captcha_t=t)
 
-# ---------- Game & APIs ----------
 @app.route('/play')
 def play():
     if 'user_id' not in session and 'guest' not in session: 
@@ -329,8 +320,7 @@ def record_result():
     conn = get_db()
     cur = conn.cursor()
     cur.execute('INSERT INTO results(user_id,seconds) VALUES(?,?)', (uid, seconds))
-    if not hasattr(conn, 'pgconn'):  # SQLite
-        conn.commit()
+    conn.commit()
     cur.execute('SELECT MIN(seconds) FROM results WHERE user_id=?', (uid,))
     best = cur.fetchone()[0]
     cur.execute('''
@@ -387,7 +377,6 @@ def download_history():
     buf.seek(0)
     return send_file(buf, as_attachment=True, download_name='sudoku_last7.pdf', mimetype='application/pdf')
 
-# ---------- Admin ----------
 def require_admin():
     if not session.get('admin'): return False
     return True
@@ -446,7 +435,6 @@ def admin_resets():
     conn.close()
     return render_template('admin_resets.html', rows=rows)
 
-# ---------- PWA Routes ----------
 @app.route('/sw.js')
 def serve_sw():
     return send_file('sw.js', mimetype='application/javascript')
@@ -455,7 +443,6 @@ def serve_sw():
 def serve_manifest():
     return send_file('manifest.json', mimetype='application/json')
 
-# ---------- Weekly digest scheduler ----------
 def send_weekly_digest():
     if not app.config.get('EMAIL_ENABLED') or not app.config.get('DIGEST_ENABLED'): return
     conn = get_db()
