@@ -1,11 +1,21 @@
 {% extends 'base.html' %}
 {% block content %}
-  <h1>Email Logs</h1>
-  <table border="1">
-    <tr><th>ID</th><th>Recipient</th><th>Subject</th><th>Status</th><th>Created At</th></tr>
-    {% for log in logs %}
-      <tr><td>{{ log.id }}</td><td>{{ log.recipient }}</td><td>{{ log.subject }}</td><td>{{ log.status }}</td><td>{{ log.created_at }}</td></tr>
-    {% endfor %}
+<div class="card">
+  <h2>Email Logs</h2>
+  <table class="table">
+    <thead><tr><th>ID</th><th>User ID</th><th>Email</th><th>Subject</th><th>Sent At</th></tr></thead>
+    <tbody>
+      {% for e in rows %}
+        <tr>
+          <td>{{ e[0] }}</td>
+          <td>{{ e[1] }}</td>
+          <td>{{ e[2] }}</td>
+          <td>{{ e[3] }}</td>
+          <td>{{ e[4] }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
   </table>
-  <p><a href="{{ url_for('admin_dashboard') }}">Back to Admin Dashboard</a></p>
+  <a class="btn secondary" href="/admin">Back to Dashboard</a>
+</div>
 {% endblock %}
