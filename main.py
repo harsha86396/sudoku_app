@@ -1,7 +1,6 @@
 
-from app import create_app
-app = create_app()
+from app import app
 
-# For Render/WSGI
-if __name__ != "__main__":
-    application = app
+if __name__ == "__main__":
+    import os
+    app.run(host="0.0.0.0", port=5000, debug=bool(int(os.environ.get("DEBUG", "0"))))

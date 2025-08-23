@@ -1,10 +1,27 @@
-
 {
-  "name": "Sudoku • Harsha Enterprises",
-  "short_name": "Sudoku",
+  "name": "Sudoku Secure Pro",
+  "short_name": "SudokuPro",
+  "description": "Play Sudoku with secure authentication and leaderboard",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#222222",
-  "icons": []
+  "background_color": "#0f172a",
+  "theme_color": "#22c55e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "entertainment", "puzzle"],
+  "lang": "en",
+  "scope": "/"
 }
