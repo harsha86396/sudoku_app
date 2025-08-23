@@ -1,8 +1,30 @@
 {% extends 'base.html' %}
 {% block content %}
+<div class="card">
   <h1>Admin Dashboard</h1>
-  <p><a href="{{ url_for('admin_users') }}">Users</a></p>
-  <p><a href="{{ url_for('admin_email_logs') }}">Email Logs</a></p>
-  <p><a href="{{ url_for('admin_password_resets') }}">Password Resets</a></p>
-  <p><a href="{{ url_for('logout') }}">Logout</a></p>
+  <nav class="small">
+    <a href="/admin/users">Users</a> ·
+    <a href="/admin/emails">Email Logs</a> ·
+    <a href="/admin/resets">Password Resets</a> ·
+    <a href="/admin/logout">Logout</a>
+  </nav>
+  
+  <div style="margin-top: 20px;">
+    <h2>Quick Stats</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px;">
+      <div class="card">
+        <h3>Total Users</h3>
+        <p style="font-size: 24px; font-weight: bold; color: var(--accent);">{{ users_count }}</p>
+      </div>
+      <div class="card">
+        <h3>Total Games</h3>
+        <p style="font-size: 24px; font-weight: bold; color: var(--accent);">{{ games_count }}</p>
+      </div>
+      <div class="card">
+        <h3>Emails Sent</h3>
+        <p style="font-size: 24px; font-weight: bold; color: var(--accent);">{{ emails_count }}</p>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
