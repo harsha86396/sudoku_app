@@ -91,41 +91,62 @@ def index():
         return redirect(url_for('play'))
     return render_template('index.html', title='Welcome')
 
-@app.route('/login')
-def login_page():
-    if 'user_id' in session: 
-        return redirect(url_for('dashboard'))
-    elif 'guest' in session:
-        return redirect(url_for('play'))
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'GET':
+        if 'user_id' in session: 
+            return redirect(url_for('dashboard'))
+        elif 'guest' in session:
+            return redirect(url_for('play'))
+        q,t = new_captcha()
+        return render_template('login.html', title='Login', captcha_q=q, captcha_t=t)
+    
+    # POST request handling
+    email = request.form['email'].strip().lower()
+    password = request.form['password']
+    
+    # Check admin login first
+    if email == app.config['ADMIN_EMAIL'] and password == app.config['ADMIN_PASSWORD']:
+        session['admin'] = True
+        return redirect(url_for('admin'))
+    
+    # Check regular user login
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('SELECT id,name,password_hash FROM users WHERE email=?', (email,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    
+    if row and check_password_hash(row['password_hash'], password):
+        session['user_id'] = row['id']
+        session['name'] = row['name']
+        session['hints_left'] = 3
+        return redirect(url_for('dashboard'))  # Fixed: redirect to dashboard, not play
+    
     q,t = new_captcha()
-    return render_template('login.html', title='Login', captcha_q=q, captcha_t=t)
+    return render_template('login.html', err='Invalid credentials.', captcha_q=q, captcha_t=t)
 
-@app.route('/register')
-def register_page():
-    if 'user_id' in session: 
-        return redirect(url_for('dashboard'))
-    elif 'guest' in session:
-        return redirect(url_for('play'))
-    q,t = new_captcha()
-    return render_template('register.html', title='Register', captcha_q=q, captcha_t=t)
-
-@app.route('/guest_login')
-def guest_login():
-    session.clear()
-    session['guest'] = True
-    session['name'] = 'Guest'
-    session['hints_left'] = 3
-    return redirect(url_for('play'))
-
-@app.route('/register', methods=['POST'])
+@app.route('/register', methods=['GET', 'POST'])
 def register():
+    if request.method == 'GET':
+        if 'user_id' in session: 
+            return redirect(url_for('dashboard'))
+        elif 'guest' in session:
+            return redirect(url_for('play'))
+        q,t = new_captcha()
+        return render_template('register.html', title='Register', captcha_q=q, captcha_t=t)
+    
+    # POST request handling
     name = request.form['name'].strip()
     email = request.form['email'].strip().lower()
     password = request.form['password']
     cap_ans = request.form['captcha_answer']; cap_tok = request.form['captcha_token']
+    
     if not check_captcha(cap_tok, cap_ans):
         q,t = new_captcha()
         return render_template('register.html', err='CAPTCHA incorrect.', captcha_q=q, captcha_t=t)
+    
     pw_hash = generate_password_hash(password)
     conn = get_db()
     cur = conn.cursor()
@@ -142,30 +163,18 @@ def register():
         cur.close()
         conn.close()
 
-@app.route('/login', methods=['POST'])
-def login():
-    email = request.form['email'].strip().lower()
-    password = request.form['password']
-    if email == app.config['ADMIN_EMAIL'] and password == app.config['ADMIN_PASSWORD']:
-        session['admin'] = True
-        return redirect(url_for('admin'))
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute('SELECT id,name,password_hash FROM users WHERE email=?', (email,))
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
-    if row and check_password_hash(row['password_hash'], password):
-        session['user_id'] = row['id']
-        session['name'] = row['name']
-        session['hints_left'] = 3
-        return redirect(url_for('dashboard'))
-    q,t = new_captcha()
-    return render_template('login.html', err='Invalid credentials.', captcha_q=q, captcha_t=t)
+@app.route('/guest_login')
+def guest_login():
+    session.clear()
+    session['guest'] = True
+    session['name'] = 'Guest'
+    session['hints_left'] = 3
+    return redirect(url_for('play'))
 
 @app.route('/logout')
 def logout():
-    session.clear(); return redirect(url_for('index'))
+    session.clear()
+    return redirect(url_for('index'))
 
 @app.route('/dashboard')
 def dashboard():
@@ -197,24 +206,30 @@ def forgot_password():
     if request.method == 'GET':
         q,t = new_captcha()
         return render_template('forgot_password.html', captcha_q=q, captcha_t=t)
+    
     email = request.form['email'].strip().lower()
     cap_ans = request.form['captcha_answer']; cap_tok = request.form['captcha_token']
+    
     if not check_captcha(cap_tok, cap_ans):
         q,t = new_captcha()
         return render_template('forgot_password.html', err='CAPTCHA incorrect.', email=email, captcha_q=q, captcha_t=t)
+    
     ok, wait = rate_limit_ok(email)
     if not ok:
         q,t = new_captcha()
         return render_template('forgot_password.html', err=f'Please wait {wait}s before requesting another OTP.', email=email, captcha_q=q, captcha_t=t)
+    
     conn = get_db()
     cur = conn.cursor()
     cur.execute('SELECT id,name FROM users WHERE email=?', (email,))
     row = cur.fetchone()
     cur.close()
     conn.close()
+    
     if not row:
         q,t = new_captcha()
         return render_template('forgot_password.html', err='Email not found.', email=email, captcha_q=q, captcha_t=t)
+    
     create_and_send_otp(row['id'], email, row['name'])
     return render_template('reset_password.html', email=email, msg='OTP sent. Check your inbox.')
 
@@ -224,15 +239,18 @@ def resend_otp():
     ok, wait = rate_limit_ok(email)
     if not ok:
         return render_template('reset_password.html', email=email, err=f'Please wait {wait}s before resending OTP.')
+    
     conn = get_db()
     cur = conn.cursor()
     cur.execute('SELECT id,name FROM users WHERE email=?', (email,))
     row = cur.fetchone()
     cur.close()
     conn.close()
+    
     if not row:
         q,t = new_captcha()
         return render_template('forgot_password.html', err='Email not found.', email=email, captcha_q=q, captcha_t=t)
+    
     create_and_send_otp(row['id'], email, row['name'])
     return render_template('reset_password.html', email=email, msg='A new OTP has been sent.')
 
@@ -242,35 +260,46 @@ def reset_password():
     otp = request.form['otp'].strip()
     password = request.form['password']
     confirm = request.form['confirm']
+    
     if password != confirm:
         return render_template('reset_password.html', email=email, err='Passwords do not match.')
+    
     conn = get_db()
     cur = conn.cursor()
     cur.execute('SELECT id,name FROM users WHERE email=?', (email,))
     user = cur.fetchone()
+    
     if not user:
         q,t = new_captcha()
         return render_template('forgot_password.html', err='Email not found.', email=email, captcha_q=q, captcha_t=t)
+    
     uid, name = user['id'], user['name']
     cur.execute('SELECT id, otp_hash, expires_at FROM password_resets WHERE user_id=? ORDER BY created_at DESC LIMIT 1', (uid,))
     pr = cur.fetchone()
+    
     if not pr:
         return render_template('reset_password.html', email=email, err='No active OTP. Please request again.')
+    
     pr_id, otp_hash, expires_at = pr['id'], pr['otp_hash'], pr['expires_at']
+    
     try:
         exp = datetime.fromisoformat(expires_at) if isinstance(expires_at, str) else expires_at
     except Exception:
         exp = datetime.utcnow() - timedelta(seconds=1)
+    
     if datetime.utcnow() > exp:
         return render_template('reset_password.html', email=email, err='OTP expired. Please request a new one.')
+    
     if not check_password_hash(otp_hash, otp):
         return render_template('reset_password.html', email=email, err='Invalid OTP.')
+    
     new_hash = generate_password_hash(password)
     cur.execute('UPDATE users SET password_hash=? WHERE id=?', (new_hash, uid))
     cur.execute('DELETE FROM password_resets WHERE user_id=?', (uid,))
     conn.commit()
     cur.close()
     conn.close()
+    
     send_email(email, 'Password Changed', f'Hi {name}, your password was reset successfully.', uid)
     q,t = new_captcha()
     return render_template('login.html', msg='Password reset successful. Please log in.', captcha_q=q, captcha_t=t)
@@ -285,112 +314,175 @@ def play():
 def api_new_puzzle():
     if 'user_id' not in session and 'guest' not in session: 
         return jsonify({'error':'not logged in'}), 401
+    
     diff = request.args.get('difficulty','medium')
     puzzle, solution = make_puzzle(diff)
+    
+    # Store puzzle and solution in session
     session['solution'] = solution
     session['puzzle'] = puzzle
     session['hints_left'] = 3
+    session['original_puzzle'] = [row[:] for row in puzzle]  # Store original state
+    
     return jsonify({'puzzle': puzzle, 'solution': solution})
 
 @app.route('/api/hint', methods=['POST'])
 def api_hint():
     if 'user_id' not in session and 'guest' not in session: 
         return jsonify({'error':'not logged in'}), 401
+    
     hints_left = session.get('hints_left',3)
-    if hints_left <= 0: return jsonify({'error':'No hints left'}), 400
-    puzzle = session.get('puzzle'); solution = session.get('solution')
+    if hints_left <= 0: 
+        return jsonify({'error':'No hints left'}), 400
+    
+    puzzle = session.get('puzzle')
+    solution = session.get('solution')
+    
+    if not puzzle or not solution:
+        return jsonify({'error':'No active puzzle'}), 400
+    
+    # Find empty cells
     empties = [(r,c) for r in range(9) for c in range(9) if puzzle[r][c]==0]
-    if not empties: return jsonify({'error':'No empty cells'}), 400
+    
+    if not empties: 
+        return jsonify({'error':'No empty cells'}), 400
+    
+    # Get a random empty cell
     r,c = random.choice(empties)
     val = solution[r][c]
+    
+    # Update the puzzle
     puzzle[r][c] = val
     session['puzzle'] = puzzle
     session['hints_left'] = hints_left - 1
+    
     return jsonify({'r':r,'c':c,'val':val,'hints_left':session['hints_left']})
 
 @app.route('/api/record_result', methods=['POST'])
 def record_result():
     if 'guest' in session:
         return jsonify({'error':'Guest mode - results not saved'}), 403
+    
     if 'user_id' not in session: 
         return jsonify({'error':'not logged in'}), 403
+    
     seconds = int(request.json.get('seconds',0))
-    if seconds <= 0: return jsonify({'error':'invalid time'}), 400
+    if seconds <= 0: 
+        return jsonify({'error':'invalid time'}), 400
+    
     uid = session['user_id']
     conn = get_db()
     cur = conn.cursor()
-    cur.execute('INSERT INTO results(user_id,seconds) VALUES(?,?)', (uid, seconds))
-    conn.commit()
-    cur.execute('SELECT MIN(seconds) FROM results WHERE user_id=?', (uid,))
-    best = cur.fetchone()[0]
-    cur.execute('''
-        SELECT u.id, MIN(r.seconds) as best FROM users u
-        JOIN results r ON r.user_id=u.id
-        GROUP BY u.id ORDER BY best ASC
-    ''')
-    rows = cur.fetchall()
-    rank = 0
-    for i, row in enumerate(rows, start=1):
-        if row[0] == uid: rank = i; break
-    if seconds == best:
-        cur.execute('SELECT email,name FROM users WHERE id=?',(uid,))
-        em, nm = cur.fetchone()
-        send_email(em, '🎉 New Personal Best!', f'Congrats {nm}! New PB: {best}s. Keep it up!', uid)
-    cur.close()
-    conn.close()
-    return jsonify({'status':'ok','best_time':best,'rank':rank})
+    
+    try:
+        cur.execute('INSERT INTO results(user_id,seconds) VALUES(?,?)', (uid, seconds))
+        conn.commit()
+        
+        cur.execute('SELECT MIN(seconds) FROM results WHERE user_id=?', (uid,))
+        best = cur.fetchone()[0]
+        
+        cur.execute('''
+            SELECT u.id, MIN(r.seconds) as best FROM users u
+            JOIN results r ON r.user_id=u.id
+            GROUP BY u.id ORDER BY best ASC
+        ''')
+        rows = cur.fetchall()
+        
+        rank = 0
+        for i, row in enumerate(rows, start=1):
+            if row[0] == uid: 
+                rank = i
+                break
+        
+        if seconds == best:
+            cur.execute('SELECT email,name FROM users WHERE id=?',(uid,))
+            user_data = cur.fetchone()
+            if user_data:
+                em, nm = user_data
+                send_email(em, '🎉 New Personal Best!', f'Congrats {nm}! New PB: {best}s. Keep it up!', uid)
+        
+        return jsonify({'status':'ok','best_time':best,'rank':rank})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+    finally:
+        cur.close()
+        conn.close()
 
 @app.route('/leaderboard')
 def leaderboard():
     if 'guest' in session:
         return render_template('guest_restricted.html', title='Leaderboard')
+    
     conn = get_db()
     cur = conn.cursor()
-    cur.execute('''
-        SELECT u.name, MIN(r.seconds) as best_time, COUNT(r.id) as games
-        FROM users u JOIN results r ON r.user_id=u.id
-        GROUP BY u.id ORDER BY best_time ASC LIMIT 25
-    ''')
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return render_template('leaderboard.html', rows=rows, title='Leaderboard')
+    
+    try:
+        cur.execute('''
+            SELECT u.name, MIN(r.seconds) as best_time, COUNT(r.id) as games
+            FROM users u JOIN results r ON r.user_id=u.id
+            GROUP BY u.id ORDER BY best_time ASC LIMIT 25
+        ''')
+        rows = cur.fetchall()
+        return render_template('leaderboard.html', rows=rows, title='Leaderboard')
+    
+    finally:
+        cur.close()
+        conn.close()
 
 @app.route('/download_history')
 def download_history():
     if 'guest' in session:
         return render_template('guest_restricted.html', title='Download History')
+    
     if 'user_id' not in session: 
         return redirect(url_for('index'))
+    
     uid = session['user_id']
     conn = get_db()
     cur = conn.cursor()
-    cur.execute('SELECT email,name FROM users WHERE id=?',(uid,))
-    email,name = cur.fetchone()
-    since = datetime.utcnow() - timedelta(days=7)
-    cur.execute('SELECT seconds, played_at FROM results WHERE user_id=? AND played_at >= ? ORDER BY played_at DESC', (uid, since))
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    buf = io.BytesIO()
-    generate_last7_pdf(name, email, rows, buf)
-    buf.seek(0)
-    return send_file(buf, as_attachment=True, download_name='sudoku_last7.pdf', mimetype='application/pdf')
+    
+    try:
+        cur.execute('SELECT email,name FROM users WHERE id=?',(uid,))
+        user_data = cur.fetchone()
+        
+        if not user_data:
+            return redirect(url_for('index'))
+        
+        email, name = user_data
+        since = datetime.utcnow() - timedelta(days=7)
+        
+        cur.execute('SELECT seconds, played_at FROM results WHERE user_id=? AND played_at >= ? ORDER BY played_at DESC', (uid, since))
+        rows = cur.fetchall()
+        
+        buf = io.BytesIO()
+        generate_last7_pdf(name, email, rows, buf)
+        buf.seek(0)
+        
+        return send_file(buf, as_attachment=True, download_name='sudoku_last7.pdf', mimetype='application/pdf')
+    
+    finally:
+        cur.close()
+        conn.close()
 
 def require_admin():
-    if not session.get('admin'): return False
-    return True
+    return session.get('admin', False)
 
 @app.route('/admin', methods=['GET','POST'])
 def admin():
     if request.method == 'GET':
-        if session.get('admin'): return render_template('admin_dashboard.html')
+        if session.get('admin'): 
+            return render_template('admin_dashboard.html')
         return render_template('admin_login.html')
+    
     email = request.form['email'].strip().lower()
     pw = request.form['password']
+    
     if email == app.config['ADMIN_EMAIL'] and pw == app.config['ADMIN_PASSWORD']:
         session['admin'] = True
         return redirect(url_for('admin'))
+    
     return render_template('admin_login.html', err='Invalid admin credentials.')
 
 @app.route('/admin/logout')
@@ -400,40 +492,58 @@ def admin_logout():
 
 @app.route('/admin/users')
 def admin_users():
-    if not require_admin(): return redirect(url_for('admin'))
+    if not require_admin(): 
+        return redirect(url_for('admin'))
+    
     conn = get_db()
     cur = conn.cursor()
-    cur.execute('''
-        SELECT u.id, u.name, u.email, COUNT(r.id) as games, MIN(r.seconds) as best
-        FROM users u LEFT JOIN results r ON r.user_id=u.id
-        GROUP BY u.id ORDER BY u.id ASC
-    ''')
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return render_template('admin_users.html', rows=rows)
+    
+    try:
+        cur.execute('''
+            SELECT u.id, u.name, u.email, COUNT(r.id) as games, MIN(r.seconds) as best
+            FROM users u LEFT JOIN results r ON r.user_id=u.id
+            GROUP BY u.id ORDER BY u.id ASC
+        ''')
+        rows = cur.fetchall()
+        return render_template('admin_users.html', rows=rows)
+    
+    finally:
+        cur.close()
+        conn.close()
 
 @app.route('/admin/emails')
 def admin_emails():
-    if not require_admin(): return redirect(url_for('admin'))
+    if not require_admin(): 
+        return redirect(url_for('admin'))
+    
     conn = get_db()
     cur = conn.cursor()
-    cur.execute('SELECT id, user_id, email, subject, sent_at FROM sent_emails ORDER BY id DESC LIMIT 200')
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return render_template('admin_emails.html', rows=rows)
+    
+    try:
+        cur.execute('SELECT id, user_id, email, subject, sent_at FROM sent_emails ORDER BY id DESC LIMIT 200')
+        rows = cur.fetchall()
+        return render_template('admin_emails.html', rows=rows)
+    
+    finally:
+        cur.close()
+        conn.close()
 
 @app.route('/admin/resets')
 def admin_resets():
-    if not require_admin(): return redirect(url_for('admin'))
+    if not require_admin(): 
+        return redirect(url_for('admin'))
+    
     conn = get_db()
     cur = conn.cursor()
-    cur.execute('SELECT id, user_id, expires_at, created_at FROM password_resets ORDER BY id DESC LIMIT 200')
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return render_template('admin_resets.html', rows=rows)
+    
+    try:
+        cur.execute('SELECT id, user_id, expires_at, created_at FROM password_resets ORDER BY id DESC LIMIT 200')
+        rows = cur.fetchall()
+        return render_template('admin_resets.html', rows=rows)
+    
+    finally:
+        cur.close()
+        conn.close()
 
 @app.route('/sw.js')
 def serve_sw():
@@ -444,17 +554,25 @@ def serve_manifest():
     return send_file('manifest.json', mimetype='application/json')
 
 def send_weekly_digest():
-    if not app.config.get('EMAIL_ENABLED') or not app.config.get('DIGEST_ENABLED'): return
+    if not app.config.get('EMAIL_ENABLED') or not app.config.get('DIGEST_ENABLED'): 
+        return
+    
     conn = get_db()
     cur = conn.cursor()
-    since = datetime.utcnow() - timedelta(days=7)
-    cur.execute('SELECT id,name,email FROM users'); users = cur.fetchall()
-    for u in users:
-        uid, name, email = u['id'], u['name'], u['email']
-        cur.execute('SELECT COUNT(*), MIN(seconds), AVG(seconds) FROM results WHERE user_id=? AND played_at >= ?', (uid, since))
-        games, best, avg = cur.fetchone()
-        if games and games > 0:
-            body = f"""Hi {name},
+    
+    try:
+        since = datetime.utcnow() - timedelta(days=7)
+        cur.execute('SELECT id,name,email FROM users')
+        users = cur.fetchall()
+        
+        for u in users:
+            uid, name, email = u['id'], u['name'], u['email']
+            cur.execute('SELECT COUNT(*), MIN(seconds), AVG(seconds) FROM results WHERE user_id=? AND played_at >= ?', (uid, since))
+            result = cur.fetchone()
+            
+            if result and result[0] > 0:
+                games, best, avg = result
+                body = f"""Hi {name},
 
 Your weekly Sudoku progress:
 - Games: {games}
@@ -463,9 +581,14 @@ Your weekly Sudoku progress:
 
 Keep practicing!
 """
-            send_email(email, 'Your Weekly Sudoku Progress 📊', body, uid)
-    cur.close()
-    conn.close()
+                send_email(email, 'Your Weekly Sudoku Progress 📊', body, uid)
+    
+    except Exception as e:
+        print(f"Error sending weekly digest: {e}")
+    
+    finally:
+        cur.close()
+        conn.close()
 
 def scheduler_thread():
     while True:
@@ -477,7 +600,8 @@ def scheduler_thread():
 
 def setup_schedule():
     schedule.every().sunday.at(app.config.get('DIGEST_IST_TIME','18:00')).do(send_weekly_digest)
-    t = threading.Thread(target=scheduler_thread, daemon=True); t.start()
+    t = threading.Thread(target=scheduler_thread, daemon=True)
+    t.start()
 
 if __name__ == '__main__':
     init_db()
