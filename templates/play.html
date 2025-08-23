@@ -1,268 +1,207 @@
 {% extends 'base.html' %}
 {% block content %}
-  <h1>Sudoku</h1>
-  <p>Hi {{ session.name | default('Guest') }}! Hints left: <span id="hints">{{ session.hints_left | default(3) }}</span></p>
-  <p>Time: <span id="timer">0</span>s</p>
-  <select id="difficulty" onchange="startNewGame()">
-    <option value="easy">Easy</option>
-    <option value="medium" selected>Medium</option>
-    <option value="hard">Hard</option>
-  </select>
-  <button onclick="startNewGame()">New Game</button>
-  <button onclick="getHint()" id="hintBtn">Get Hint</button>
-  <button onclick="submitPuzzle()">Submit</button>
-  <div id="sudokuGrid"></div>
-  <p id="msg" class="success">{{ session.pop('msg', '') }}</p>
-  <p id="err" class="error">{{ session.pop('err', '') }}</p>
-  <p><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
+<div class="card">
+  <h1>🧩 Sudoku</h1>
+  <div class="small">Theme: <span id="theme-name">Dark</span> • Hints left: <span id="hints-left">3</span> • Time: <span id="timer">0</span>s</div>
+  <div style="margin:12px 0">
+    Difficulty: 
+    <select id="difficulty">
+      <option value="easy">Easy</option>
+      <option value="medium" selected>Medium</option>
+      <option value="hard">Hard</option>
+    </select>
+    <button class="btn" onclick="newPuzzle()">New Puzzle</button>
+    <button class="btn secondary" onclick="getHint()">Get Hint</button>
+    <button class="btn danger" onclick="restart()">Restart</button>
+  </div>
+  <div id="board" class="sudoku-container"></div>
+  <div class="controls">
+    <button class="btn" onclick="setDigit(1)">1</button>
+    <button class="btn" onclick="setDigit(2)">2</button>
+    <button class="btn" onclick="setDigit(3)">3</button>
+    <button class="btn" onclick="setDigit(4)">4</button>
+    <button class="btn" onclick="setDigit(5)">5</button>
+    <button class="btn" onclick="setDigit(6)">6</button>
+    <button class="btn" onclick="setDigit(7)">7</button>
+    <button class="btn" onclick="setDigit(8)">8</button>
+    <button class="btn" onclick="setDigit(9)">9</button>
+    <button class="btn secondary" onclick="erase()">Erase</button>
+  </div>
+  <p class="small">"Sudoku powered by Harsha Enterprises"</p>
+  <a class="btn secondary" href="/dashboard">Back to Dashboard</a>
+</div>
 {% endblock %}
+
 {% block scripts %}
-  <script>
-    // Initialize with robust JSON parsing
-    let grid = [];
-    let solution = [];
-    try {
-      const puzzleData = '{{ session.puzzle | tojson | safe | default('[]') }}';
-      const solutionData = '{{ session.solution | tojson | safe | default('[]') }}';
-      if (puzzleData && puzzleData !== 'null') {
-        grid = JSON.parse(puzzleData);
-      }
-      if (solutionData && solutionData !== 'null') {
-        solution = JSON.parse(solutionData);
-      }
-      console.log('Parsed grid:', grid);
-      console.log('Parsed solution:', solution);
-    } catch (e) {
-      console.error('Failed to parse grid or solution:', e);
-    }
-    let startTime = {{ session.start_time | tojson | safe | default(0) }};
+<script>
+let puzzle = [];
+let solution = [];
+let selected = null;
+let startTime = null;
+let timerInterval = null;
+let hintsLeft = 3;
+let original = [];
 
-    // Validate grid and solution
-    if (!Array.isArray(grid) || grid.length !== 9 || !grid.every(row => Array.isArray(row) && row.length === 9)) {
-      console.warn('Invalid or empty grid, starting new game');
-      startNewGame();
-      return;
-    }
-    if (!Array.isArray(solution) || solution.length !== 9 || !solution.every(row => Array.isArray(row) && row.length === 9)) {
-      console.warn('Invalid or empty solution, starting new game');
-      startNewGame();
-      return;
-    }
+function $(id){ return document.getElementById(id); }
 
-    function createGrid() {
-      const gridDiv = document.getElementById('sudokuGrid');
-      gridDiv.innerHTML = '';
-      const table = document.createElement('table');
-      for (let r = 0; r < 9; r++) {
-        const row = document.createElement('tr');
-        for (let c = 0; c < 9; c++) {
-          const cell = document.createElement('td');
-          cell.className = `cell r${r} c${c} block${Math.floor(r/3)*3 + Math.floor(c/3)}`;
-          const input = document.createElement('input');
-          input.type = 'text';
-          input.maxLength = 1;
-          input.value = grid[r][c] || '';
-          input.readOnly = grid[r][c] !== 0;
-          input.oninput = (e) => updateGrid(r, c, e.target.value);
-          input.onfocus = () => highlight(r, c);
-          input.onblur = () => clearHighlight();
-          input.onkeypress = (e) => {
-            const char = String.fromCharCode(e.which);
-            if (!/[1-9]/.test(char)) e.preventDefault();
-          };
-          cell.appendChild(input);
-          row.appendChild(cell);
+function makeCell(r,c,val,prefilled){
+  const d = document.createElement('div');
+  d.className = 'cell' + (prefilled ? ' prefilled' : '');
+  d.dataset.r = r; d.dataset.c = c;
+  d.textContent = val ? val : '';
+  d.onclick = () => { 
+    if(!prefilled){ 
+      if(selected) selected.style.outline='none'; 
+      selected = d; 
+      d.style.outline='2px solid var(--accent)'; 
+    } 
+  };
+  return d;
+}
+
+function drawBoard(){
+  const board = $('board');
+  board.innerHTML = '';
+  
+  // Create the 3x3 container grid
+  for (let boxRow = 0; boxRow < 3; boxRow++) {
+    for (let boxCol = 0; boxCol < 3; boxCol++) {
+      const box = document.createElement('div');
+      box.className = 'sudoku-box';
+      
+      // Fill the box with cells
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          const cellRow = boxRow * 3 + r;
+          const cellCol = boxCol * 3 + c;
+          const cell = makeCell(cellRow, cellCol, puzzle[cellRow][cellCol], original[cellRow][cellCol] !== 0);
+          box.appendChild(cell);
         }
-        table.appendChild(row);
       }
-      gridDiv.appendChild(table);
-      updateTimer();
-      console.log('Grid rendered');
+      
+      board.appendChild(box);
     }
+  }
+}
 
-    function updateGrid(r, c, value) {
-      const num = parseInt(value) || 0;
-      if (num >= 0 && num <= 9) {
-        grid[r][c] = num;
-      } else {
-        grid[r][c] = 0;
-        document.querySelector(`.r${r}.c${c} input`).value = '';
-      }
+async function newPuzzle(){
+  hintsLeft = 3; $('hints-left').textContent = hintsLeft;
+  const diff = $('difficulty').value;
+  const resp = await fetch('/api/new_puzzle?difficulty=' + diff);
+  const data = await resp.json();
+  puzzle = data.puzzle;
+  solution = data.solution;
+  original = JSON.parse(JSON.stringify(puzzle));
+  startTimer();
+  drawBoard();
+}
+
+function startTimer(){
+  if(timerInterval) clearInterval(timerInterval);
+  startTime = Date.now();
+  timerInterval = setInterval(()=>{
+    $('timer').textContent = Math.floor((Date.now() - startTime)/1000);
+  }, 500);
+}
+
+function setDigit(n){
+  if(!selected) return;
+  const r = parseInt(selected.dataset.r), c = parseInt(selected.dataset.c);
+  if(original[r][c] !== 0) return;
+  selected.textContent = n;
+  puzzle[r][c] = n;
+  validateCell(selected, r, c);
+  checkSolved();
+}
+
+function erase(){
+  if(!selected) return;
+  const r = parseInt(selected.dataset.r), c = parseInt(selected.dataset.c);
+  if(original[r][c] !== 0) return;
+  selected.textContent = '';
+  selected.classList.remove('error');
+  puzzle[r][c] = 0;
+}
+
+function validateCell(cell, r, c){
+  if(puzzle[r][c] === 0){ cell.classList.remove('error'); return; }
+  if(puzzle[r][c] !== solution[r][c]){
+    cell.classList.add('error');
+  } else {
+    cell.classList.remove('error');
+  }
+}
+
+function isSolved(){
+  for(let r=0;r<9;r++){
+    for(let c=0;c<9;c++){
+      if(puzzle[r][c] !== solution[r][c]) return false;
     }
+  }
+  return true;
+}
 
-    function highlight(r, c) {
-      clearHighlight();
-      document.querySelectorAll(`.r${r} input, .c${c} input, .block${Math.floor(r/3)*3 + Math.floor(c/3)} input`)
-        .forEach(input => input.classList.add('highlight'));
-    }
-
-    function clearHighlight() {
-      document.querySelectorAll('.highlight').forEach(input => input.classList.remove('highlight'));
-    }
-
-    function updateTimer() {
-      if (startTime) {
-        const seconds = Math.floor((Date.now() / 1000) - startTime);
-        document.getElementById('timer').textContent = seconds;
-        setTimeout(updateTimer, 1000);
-      }
-    }
-
-    function startNewGame() {
-      const difficulty = document.getElementById('difficulty').value;
-      fetch('/play', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `difficulty=${difficulty}`
-      }).then(response => {
-        if (response.redirected) {
-          window.location.href = response.url;
-        }
-      }).catch(error => {
-        console.error('Failed to start new game:', error);
-        document.getElementById('err').textContent = 'Failed to start new game';
-      });
-    }
-
-    function getHint() {
-      fetch('/hint', { method: 'POST' })
-        .then(response => response.json())
-        .then(data => {
-          if (data.error) {
-            document.getElementById('err').textContent = data.error;
-            return;
-          }
-          grid[data.row][data.col] = data.value;
-          const input = document.querySelector(`.r${data.row}.c${data.col} input`);
-          input.value = data.value;
-          input.readOnly = true;
-          document.getElementById('hints').textContent = data.hints_left;
-          if (data.hints_left === 0) {
-            document.getElementById('hintBtn').disabled = true;
-          }
-          document.getElementById('err').textContent = '';
-        }).catch(error => {
-          console.error('Hint request failed:', error);
-          document.getElementById('err').textContent = 'Failed to get hint';
+async function checkSolved(){
+  if(isSolved()){
+    clearInterval(timerInterval);
+    const seconds = Math.floor((Date.now() - startTime)/1000);
+    alert('🎉 Solved in ' + seconds + ' seconds!');
+    
+    // Only post to leaderboard if not in guest mode
+    if(!{{ 'true' if session.guest else 'false' }}){
+      try{
+        const res = await fetch('/api/record_result', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({seconds})
         });
-    }
-
-    function validatePuzzle() {
-      for (let r = 0; r < 9; r++) {
-        for (let c = 0; c < 9; c++) {
-          if (grid[r][c] === 0 || grid[r][c] !== solution[r][c]) {
-            return false;
-          }
+        const j = await res.json();
+        if(j.status === 'ok'){
+          alert('Result recorded! Your best: ' + j.best_time + 's. Rank: #' + j.rank);
+          window.location.href = '/leaderboard';
+        } else {
+          alert('Result not recorded: ' + (j.error || 'Unknown error'));
         }
+      }catch(e){
+        console.error(e);
+        alert('Failed to post result.');
       }
-      return true;
     }
+  }
+}
 
-    function submitPuzzle() {
-      if (!validatePuzzle()) {
-        document.getElementById('err').textContent = 'Puzzle incomplete or incorrect';
-        alert('Puzzle is incomplete or contains errors. Please check your entries.');
-        return;
-      }
-      fetch('/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grid: grid })
-      })
-        .then(response => response.json())
-        .then(data => {
-          if (data.error) {
-            document.getElementById('err').textContent = data.error;
-            alert(data.error);
-          } else {
-            document.getElementById('msg').textContent = `Puzzle submitted in ${data.seconds} seconds!`;
-            alert(`Success! Puzzle completed in ${data.seconds} seconds.`);
-            window.location.href = '/dashboard';
-          }
-        })
-        .catch(error => {
-          console.error('Submission failed:', error);
-          document.getElementById('err').textContent = 'Submission failed';
-          alert('Submission failed: ' + error.message);
-        });
-    }
+async function getHint(){
+  if(hintsLeft <= 0){ alert('No hints left.'); return; }
+  const res = await fetch('/api/hint', {method:'POST'});
+  const j = await res.json();
+  if(j.error){ alert(j.error); return; }
+  const {r,c,val} = j;
+  const board = $('board');
+  const boxes = board.getElementsByClassName('sudoku-box');
+  const boxRow = Math.floor(r / 3);
+  const boxCol = Math.floor(c / 3);
+  const cellRow = r % 3;
+  const cellCol = c % 3;
+  const box = boxes[boxRow * 3 + boxCol];
+  const cell = box.children[cellRow * 3 + cellCol];
+  puzzle[r][c] = val;
+  original[r][c] = val; // lock it
+  cell.textContent = val;
+  cell.classList.add('prefilled');
+  hintsLeft = j.hints_left;
+  $('hints-left').textContent = hintsLeft;
+  checkSolved();
+}
 
-    window.onload = () => {
-      {% if not session.user_id %}
-        alert('Playing in Guest Mode: Your scores will not be saved, shown on the leaderboard, or included in PDFs.');
-      {% endif %}
-      if (!grid.length || !solution.length) {
-        console.warn('Grid or solution empty, starting new game');
-        startNewGame();
-      } else {
-        createGrid();
-      }
-    };
-  </script>
-  <style>
-    table { 
-      border-collapse: collapse; 
-      margin: 20px 0; 
-      border: 3px solid #333; 
-    }
-    .cell { 
-      width: 40px; 
-      height: 40px; 
-      border: 1px solid #999; 
-      text-align: center; 
-    }
-    .cell input { 
-      width: 100%; 
-      height: 100%; 
-      border: none; 
-      text-align: center; 
-      font-size: 16px; 
-      background: transparent; 
-    }
-    .cell input:read-only { 
-      background: #f0f0f0; 
-      color: #333; 
-    }
-    .cell input:read-only.dark { 
-      background: #555; 
-      color: #fff; 
-    }
-    .highlight { 
-      background: #d0d0ff; 
-    }
-    .highlight.dark { 
-      background: #6666cc; 
-    }
-    .success { 
-      color: green; 
-    }
-    .error { 
-      color: red; 
-    }
-    /* 3x3 subgrid borders */
-    .r0, .r3, .r6 { 
-      border-top: 3px solid #333; 
-    }
-    .c0, .c3, .c6 { 
-      border-left: 3px solid #333; 
-    }
-    .r8 { 
-      border-bottom: 3px solid #333; 
-    }
-    .c8 { 
-      border-right: 3px solid #333; 
-    }
-    /* Theme-specific styles */
-    table.dark { 
-      border-color: #ccc; 
-      background: #444; 
-    }
-    .cell.dark { 
-      border-color: #ccc; 
-    }
-    .cell input.dark { 
-      color: #fff; 
-      background: #444; 
-    }
-  </style>
+function restart(){
+  puzzle = JSON.parse(JSON.stringify(original));
+  drawBoard();
+  startTimer();
+}
+
+window.addEventListener('DOMContentLoaded', ()=>{
+  newPuzzle();
+  const isLight = document.documentElement.classList.contains('light');
+  document.getElementById('theme-name').textContent = isLight ? 'Light' : 'Dark';
+});
+</script>
 {% endblock %}
