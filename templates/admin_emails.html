@@ -1,21 +1,52 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="card">
-  <h2>Email Logs</h2>
-  <table class="table">
-    <thead><tr><th>ID</th><th>User ID</th><th>Email</th><th>Subject</th><th>Sent At</th></tr></thead>
-    <tbody>
-      {% for e in rows %}
-        <tr>
-          <td>{{ e[0] }}</td>
-          <td>{{ e[1] }}</td>
-          <td>{{ e[2] }}</td>
-          <td>{{ e[3] }}</td>
-          <td>{{ e[4] }}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <a class="btn secondary" href="/admin">Back to Dashboard</a>
-</div>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Emails - Sudoku Secure Pro</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">Sudoku Secure Pro - Admin</div>
+            <ul class="nav-links">
+                <li><a href="/admin">Dashboard</a></li>
+                <li><a href="/admin/users">Users</a></li>
+                <li><a href="/admin/emails">Emails</a></li>
+                <li><a href="/admin/resets">Password Resets</a></li>
+                <li><a href="/admin/logout">Logout</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="card">
+            <h1>Sent Emails</h1>
+            
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>User ID</th>
+                        <th>Email</th>
+                        <th>Subject</th>
+                        <th>Sent At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td>{{ row[0] }}</td>
+                        <td>{{ row[1] or 'N/A' }}</td>
+                        <td>{{ row[2] }}</td>
+                        <td>{{ row[3] }}</td>
+                        <td>{{ row[4] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+</body>
+</html>
