@@ -1,73 +1,160 @@
+# utils/sudoku.py
 import random
+import copy
 
-def valid(grid, r, c, n):
-    for i in range(9):
-        if grid[r][i] == n: return False
-        if grid[i][c] == n: return False
-    br, bc = 3*(r//3), 3*(c//3)
-    for i in range(br, br+3):
-        for j in range(bc, bc+3):
-            if grid[i][j] == n: return False
-    return True
+def generate_sudoku(difficulty='medium'):
+    """
+    Generate a Sudoku puzzle of the specified difficulty.
+    Returns a tuple of (puzzle, solution)
+    """
+    # Create a solved Sudoku board
+    board = [[0] * 9 for _ in range(9)]
+    solve_sudoku(board)
+    
+    # Create a copy for the puzzle
+    puzzle = copy.deepcopy(board)
+    
+    # Remove numbers based on difficulty
+    cells_to_remove = {
+        'easy': random.randint(35, 40),
+        'medium': random.randint(45, 50),
+        'hard': random.randint(55, 60)
+    }[difficulty]
+    
+    # Remove cells while ensuring the puzzle has a unique solution
+    cells_removed = 0
+    attempts = 0
+    max_attempts = 200
+    
+    while cells_removed < cells_to_remove and attempts < max_attempts:
+        row, col = random.randint(0, 8), random.randint(0, 8)
+        
+        # Skip if already empty
+        if puzzle[row][col] == 0:
+            attempts += 1
+            continue
+            
+        # Store the value in case we need to put it back
+        backup = puzzle[row][col]
+        puzzle[row][col] = 0
+        
+        # Check if the puzzle still has a unique solution
+        temp_puzzle = copy.deepcopy(puzzle)
+        if not has_unique_solution(temp_puzzle):
+            puzzle[row][col] = backup
+            attempts += 1
+        else:
+            cells_removed += 1
+            attempts = 0
+    
+    return puzzle, board
 
-def find_empty(grid):
-    for r in range(9):
-        for c in range(9):
-            if grid[r][c] == 0:
-                return r, c
-    return None
-
-def solve(grid):
-    pos = find_empty(grid)
-    if not pos: return True
-    r, c = pos
-    nums = list(range(1,10)); random.shuffle(nums)
-    for n in nums:
-        if valid(grid, r, c, n):
-            grid[r][c] = n
-            if solve(grid): return True
-            grid[r][c] = 0
+def solve_sudoku(board):
+    """
+    Solve the Sudoku board using backtracking.
+    Returns True if solved, False otherwise.
+    """
+    empty = find_empty(board)
+    if not empty:
+        return True
+        
+    row, col = empty
+    
+    # Try numbers in random order for more variety
+    numbers = list(range(1, 10))
+    random.shuffle(numbers)
+    
+    for num in numbers:
+        if is_valid_move(board, num, row, col):
+            board[row][col] = num
+            
+            if solve_sudoku(board):
+                return True
+                
+            board[row][col] = 0
+            
     return False
 
-def generate_full():
-    g = [[0]*9 for _ in range(9)]
-    solve(g); return g
+def find_empty(board):
+    """
+    Find an empty cell in the board.
+    Returns (row, col) or None if no empty cells.
+    """
+    for i in range(9):
+        for j in range(9):
+            if board[i][j] == 0:
+                return i, j
+    return None
 
-def copy_grid(g): return [row[:] for row in g]
+def is_valid_move(board, num, row, col):
+    """
+    Check if placing num at (row, col) is valid.
+    """
+    # Check row
+    for i in range(9):
+        if board[row][i] == num:
+            return False
+            
+    # Check column
+    for i in range(9):
+        if board[i][col] == num:
+            return False
+            
+    # Check 3x3 box
+    start_row, start_col = 3 * (row // 3), 3 * (col // 3)
+    for i in range(start_row, start_row + 3):
+        for j in range(start_col, start_col + 3):
+            if board[i][j] == num:
+                return False
+                
+    return True
 
-def count_solutions(grid):
-    count = 0
-    def backtrack(g):
-        nonlocal count
-        if count > 1: return
-        pos = find_empty(g)
-        if not pos:
-            count += 1; return
-        r,c = pos
-        for n in range(1,10):
-            if valid(g,r,c,n):
-                g[r][c] = n
-                backtrack(g)
-                g[r][c] = 0
-    backtrack([row[:] for row in grid])
+def has_unique_solution(board):
+    """
+    Check if the Sudoku puzzle has exactly one solution.
+    """
+    # Create a copy to avoid modifying the original
+    temp_board = copy.deepcopy(board)
+    return count_solutions(temp_board) == 1
+
+def count_solutions(board, count=0):
+    """
+    Count the number of solutions for the Sudoku puzzle.
+    """
+    # Limit the number of solutions to 2 for efficiency
+    if count > 1:
+        return count
+        
+    empty = find_empty(board)
+    if not empty:
+        return count + 1
+        
+    row, col = empty
+    
+    for num in range(1, 10):
+        if is_valid_move(board, num, row, col):
+            board[row][col] = num
+            count = count_solutions(board, count)
+            board[row][col] = 0
+            
+            if count > 1:
+                break
+                
     return count
 
-def make_puzzle(difficulty="medium"):
-    full = generate_full()
-    puzzle = copy_grid(full)
-    removals = {
-        "easy": random.randint(35,41),
-        "medium": random.randint(42,49),
-        "hard": random.randint(50,55)
-    }.get(difficulty, 42)
-    cells = [(r,c) for r in range(9) for c in range(9)]
-    random.shuffle(cells)
-    removed = 0
-    for r,c in cells:
-        if removed >= removals: break
-        keep = puzzle[r][c]; puzzle[r][c] = 0
-        if count_solutions([row[:] for row in puzzle]) != 1:
-            puzzle[r][c] = keep
-        else:
-            removed += 1
-    return puzzle, full
+def print_board(board):
+    """
+    Utility function to print the Sudoku board.
+    """
+    for i in range(9):
+        if i % 3 == 0 and i != 0:
+            print("- - - - - - - - - - -")
+            
+        for j in range(9):
+            if j % 3 == 0 and j != 0:
+                print("| ", end="")
+                
+            if j == 8:
+                print(board[i][j])
+            else:
+                print(str(board[i][j]) + " ", end="")
