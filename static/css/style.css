@@ -1,99 +1,254 @@
-:root{
-  --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --accent:#22c55e; --muted:#94a3b8; --danger:#ef4444;
-  --cell:#0b1220; --link:#38bdf8;
-}
-/* light theme */
-:root.light{
-  --bg:#f5f7fb; --panel:#ffffff; --text:#0f172a; --accent:#16a34a; --muted:#4b5563; --danger:#b91c1c;
-  --cell:#eef2ff; --link:#0369a1;
-}
-*{box-sizing:border-box}
-body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:0; transition: background 0.3s, color 0.3s;}
-.header{padding:16px 20px;background:linear-gradient(90deg,#0ea5e9,#22c55e);color:#0b1220;font-weight:800;display:flex;justify-content:space-between;align-items:center}
-.header .brand{font-size:18px}
-.theme-toggle{background:transparent;border:2px solid rgba(0,0,0,.15);padding:6px 10px;border-radius:10px;cursor:pointer; transition: all 0.3s;}
-.theme-toggle:hover{background: rgba(0,0,0,0.1);}
-.container{max-width:1100px;margin:24px auto;padding:0 16px}
-.card{background:var(--panel);border-radius:16px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,.12); transition: all 0.3s;}
-h1,h2{margin:0 0 12px 0}
-a{color:var(--link); transition: color 0.3s;}
-a.btn,button.btn{background:var(--accent);color:#07120a;border:none;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block; transition: all 0.3s;}
-a.btn:hover,button.btn:hover{opacity: 0.9; transform: translateY(-2px);}
-.btn.secondary{background:#38bdf8;color:#07120a}
-.btn.danger{background:var(--danger);color:#fff}
-nav a{color:var(--text);margin-right:12px;text-decoration:none; transition: all 0.3s;}
-nav a:hover{text-decoration:underline; color: var(--accent);}
-.sudoku-container{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:500px;margin:0 auto;}
-.sudoku-box{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;border:2px solid var(--muted);padding:2px;background-color:var(--muted);}
-.cell{width:100%;aspect-ratio:1;background:var(--cell);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;user-select:none;border:1px solid var(--muted); transition: all 0.3s;}
-.cell.prefilled{color:#38bdf8}
-.cell.error{background:#3b0d0d}
-.controls{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0}
-.small{color:var(--muted);font-size:12px}
-footer{opacity:.7;text-align:center;padding:24px; margin-top: 40px;}
-input,select{width:100%;padding:10px;border-radius:10px;border:1px solid #334155;background:var(--cell);color:var(--text); transition: all 0.3s;}
-:root.light input,:root.light select{border-color:#cbd5e1}
-label{font-size:12px;color:var(--muted)}
-hr{border-color:#1f2937}
-.alert{padding:10px 12px;border-radius:10px;margin:8px 0;background:#0b3a1a;color:#b7f7c5; transition: all 0.3s;}
-.alert.err{background:#3a0b0b;color:#ffc9c9}
-.table{width:100%;border-collapse:collapse}
-.table th,.table td{padding:8px;border-bottom:1px solid #1f2937;text-align:left}
-:root.light .table th,:root.light .table td{border-bottom:1px solid #e5e7eb}
-
-/* Responsive design */
-@media (max-width: 600px) {
-  .sudoku-container {
-    grid-template-columns: 1fr;
-    max-width: 300px;
-  }
-  
-  .cell {
-    font-size: 1rem;
-  }
-  
-  .header {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .container {
-    padding: 0 10px;
-  }
-  
-  .card {
-    padding: 12px;
-  }
+/* static/css/style.css */
+:root {
+    --primary: #22c55e;
+    --primary-dark: #16a34a;
+    --secondary: #3b82f6;
+    --dark: #0f172a;
+    --light: #f8fafc;
+    --gray: #64748b;
+    --border: #e2e8f0;
 }
 
-/* System preference based theme */
-@media (prefers-color-scheme: light) {
-  :root:not(.dark) {
-    --bg: #f5f7fb;
-    --panel: #ffffff;
-    --text: #0f172a;
-    --accent: #16a34a;
-    --muted: #4b5563;
-    --danger: #b91c1c;
-    --cell: #eef2ff;
-    --link: #0369a1;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not(.light) {
-    --bg: #0f172a;
-    --panel: #111827;
-    --text: #e5e7eb;
-    --accent: #22c55e;
-    --muted: #94a3b8;
-    --danger: #ef4444;
-    --cell: #0b1220;
-    --link: #38bdf8;
-  }
-}
-
-/* Animation for theme switching */
 * {
-  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--light);
+    color: var(--dark);
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* Header */
+header {
+    background-color: var(--dark);
+    color: white;
+    padding: 1rem 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.nav-links {
+    display: flex;
+    gap: 1.5rem;
+    list-style: none;
+}
+
+.nav-links a {
+    color: white;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.nav-links a:hover {
+    color: var(--primary);
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.3s;
+}
+
+.btn:hover {
+    background-color: var(--primary-dark);
+}
+
+.btn-secondary {
+    background-color: var(--secondary);
+}
+
+.btn-outline {
+    background-color: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+}
+
+.btn-outline:hover {
+    background-color: var(--primary);
+    color: white;
+}
+
+/* Forms */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.25rem;
+    font-size: 1rem;
+}
+
+/* Sudoku Board */
+.sudoku-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.sudoku-board {
+    display: grid;
+    grid-template-columns: repeat(9, 40px);
+    grid-template-rows: repeat(9, 40px);
+    gap: 0;
+    border: 2px solid var(--dark);
+}
+
+.sudoku-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+}
+
+.sudoku-cell.fixed {
+    background-color: #f1f5f9;
+    color: var(--dark);
+}
+
+.sudoku-cell.selected {
+    background-color: #bfdbfe;
+}
+
+.sudoku-controls {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.number-pad {
+    display: grid;
+    grid-template-columns: repeat(5, 40px);
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.number-btn {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.number-btn:hover {
+    background-color: var(--primary);
+    color: white;
+}
+
+/* Game info */
+.game-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Cards */
+.card {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Tables */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.table th,
+.table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.table th {
+    background-color: #f8fafc;
+    font-weight: bold;
+}
+
+/* Utilities */
+.text-center {
+    text-align: center;
+}
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .sudoku-board {
+        grid-template-columns: repeat(9, 35px);
+        grid-template-rows: repeat(9, 35px);
+    }
+    
+    .nav-links {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .game-info {
+        flex-direction: column;
+        gap: 1rem;
+    }
 }
