@@ -1,6 +1,10 @@
+from flask import Flask
 
-from app import app
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Sudoku App is running on Render!"
 
 if __name__ == "__main__":
-    import os
-    app.run(host="0.0.0.0", port=5000, debug=bool(int(os.environ.get("DEBUG", "0"))))
+    app.run(host="0.0.0.0", port=5000)

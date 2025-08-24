@@ -1,47 +1,62 @@
-import psycopg2
-import psycopg2.extras
-from flask import g
-from config import DATABASE_URL
+import sqlite3
+import os
 
 def get_db():
-    if "db" not in g:
-        g.db = psycopg2.connect(DATABASE_URL, sslmode="require")
-    return g.db
-
-def close_db(e=None):
-    db = g.pop("db", None)
-    if db is not None:
-        db.close()
+    conn = sqlite3.connect("sudoku.db")
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def init_db():
-    db = get_db()
-    cur = db.cursor()
+    conn = get_db()
+    cur = conn.cursor()
+    
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(50) UNIQUE NOT NULL,
-        email VARCHAR(120) UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        verified BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
+        CREATE TABLE IF NOT EXISTS users(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            email TEXT UNIQUE,
+            password_hash TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
     """)
+    
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS leaderboard (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(50) NOT NULL,
-        score INT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
+        CREATE TABLE IF NOT EXISTS results(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            seconds INTEGER,
+            played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
     """)
+    
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS otps (
-        id SERIAL PRIMARY KEY,
-        email VARCHAR(120) NOT NULL,
-        otp VARCHAR(6) NOT NULL,
-        expiry TIMESTAMP NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
+        CREATE TABLE IF NOT EXISTS sent_emails(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            email TEXT,
+            subject TEXT,
+            body TEXT,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
     """)
-    db.commit()
+    
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS password_resets(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            otp_hash TEXT,
+            expires_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS otp_rate_limit(
+            email TEXT PRIMARY KEY,
+            last_request_ts REAL
+        )
+    """)
+    
+    conn.commit()
     cur.close()
+    conn.close()
