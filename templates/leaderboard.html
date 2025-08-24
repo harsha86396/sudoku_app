@@ -1,21 +1,70 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="card">
-<h1>🏆 Leaderboard</h1>
-<p class="small">Fastest all-time bests</p>
-<table class="table">
-  <thead><tr><th>#</th><th>Name</th><th>Best (s)</th><th>Games</th></tr></thead>
-  <tbody>
-  {% for i,row in enumerate(rows, start=1) %}
-    <tr>
-      <td>{{ i }}</td>
-      <td>{{ row[0] }}</td>
-      <td>{{ row[1] }}</td>
-      <td>{{ row[2] }}</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-<a class="btn secondary" href="/dashboard">Back to Dashboard</a>
-</div>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Sudoku Secure Pro</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">Sudoku Secure Pro</div>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/play">Play</a></li>
+                <li><a href="/leaderboard">Leaderboard</a></li>
+                {% if 'user_id' in session %}
+                    <li><a href="/download_history">Download History</a></li>
+                {% endif %}
+                <li><a href="/logout">Logout</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="card">
+            <h1 class="text-center">Global Leaderboard</h1>
+            <p class="text-center">Top 25 players by best completion time</p>
+            
+            {% if rows %}
+            <table class="table mt-2">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Best Time</th>
+                        <th>Games Played</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ row[0] }}</td>
+                        <td>{{ row[1] }} seconds</td>
+                        <td>{{ row[2] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center mt-2">
+                <p>No leaderboard data available yet.</p>
+                <a href="/play" class="btn">Be the first to play!</a>
+            </div>
+            {% endif %}
+            
+            <div class="text-center mt-2">
+                <a href="/play" class="btn">Play Now</a>
+                <a href="/dashboard" class="btn btn-outline">Back to Dashboard</a>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center mt-3">
+        <p>Sudoku Secure Pro &copy; 2024. All rights reserved.</p>
+    </footer>
+</body>
+</html>
