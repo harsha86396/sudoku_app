@@ -1,51 +1,57 @@
-(function(){
-  try {
-    // Check for saved theme preference or use system preference
-    const saved = localStorage.getItem('theme');
-    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+// static/js/theme.js
+document.addEventListener('DOMContentLoaded', function() {
+    // Check for saved theme preference or respect OS preference
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
-    // Apply theme based on preference
-    if (saved === 'light') {
-      document.documentElement.classList.add('light');
-    } else if (saved === 'dark') {
-      document.documentElement.classList.remove('light');
-    } else if (systemDark) {
-      // Use system preference if no saved preference
-      document.documentElement.classList.remove('light');
+    // Set initial theme
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
     } else {
-      document.documentElement.classList.add('light');
+        document.documentElement.setAttribute('data-theme', 'light');
     }
     
-    // Theme toggle function
-    window.toggleTheme = function() {
-      const isLight = document.documentElement.classList.toggle('light');
-      localStorage.setItem('theme', isLight ? 'light' : 'dark');
-      updateThemeName();
+    // Add theme toggle button if it doesn't exist
+    if (!document.getElementById('theme-toggle')) {
+        const themeToggle = document.createElement('button');
+        themeToggle.id = 'theme-toggle';
+        themeToggle.className = 'theme-toggle';
+        themeToggle.innerHTML = '🌙';
+        themeToggle.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: var(--primary);
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+        `;
+        
+        themeToggle.addEventListener('click', toggleTheme);
+        document.body.appendChild(themeToggle);
     }
     
-    // Update theme name display
-    function updateThemeName() {
-      const themeNameEl = document.getElementById('theme-name');
-      if (themeNameEl) {
-        themeNameEl.textContent = document.documentElement.classList.contains('light') ? 'Light' : 'Dark';
-      }
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        
+        const themeToggle = document.getElementById('theme-toggle');
+        themeToggle.innerHTML = newTheme === 'light' ? '🌙' : '☀️';
     }
     
-    // Listen for system theme changes
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-      if (!localStorage.getItem('theme')) {
-        if (e.matches) {
-          document.documentElement.classList.remove('light');
-        } else {
-          document.documentElement.classList.add('light');
-        }
-        updateThemeName();
-      }
-    });
-    
-    // Initialize theme name
-    updateThemeName();
-  } catch(e) {
-    console.error('Theme error:', e);
-  }
-})();
+    // Update toggle button icon based on current theme
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
+        themeToggle.innerHTML = currentTheme === 'light' ? '🌙' : '☀️';
+    }
+});
