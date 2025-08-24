@@ -1,35 +1,63 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="card" style="max-width: 480px; margin: auto;">
-  <h1>Create Account</h1>
-  
-  {% if msg %}
-  <div class="alert">{{ msg }}</div>
-  {% endif %}
-  
-  {% if err %}
-  <div class="alert err">{{ err }}</div>
-  {% endif %}
-  
-  <form action="/register" method="post">
-    <label>Name</label>
-    <input name="name" required>
-    
-    <label>Email</label>
-    <input name="email" type="email" required>
-    
-    <label>Password</label>
-    <input name="password" type="password" required>
-    
-    <label>CAPTCHA: {{ captcha_q }}</label>
-    <input name="captcha_answer" required>
-    <input type="hidden" name="captcha_token" value="{{ captcha_t }}">
-    
-    <button class="btn" type="submit" style="width: 100%; margin-top: 16px;">Register</button>
-  </form>
-  
-  <div style="margin-top: 20px; text-align: center;">
-    <a href="/login">Already have an account? Login</a>
-  </div>
-</div>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Sudoku Secure Pro</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">Sudoku Secure Pro</div>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/login">Login</a></li>
+                <li><a href="/register">Register</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="card" style="max-width: 400px; margin: 2rem auto;">
+            <h1 class="text-center">Register</h1>
+            
+            {% if err %}
+            <div style="color: red; margin-bottom: 1rem; padding: 0.5rem; background: #fee; border: 1px solid #fcc;">
+                {{ err }}
+            </div>
+            {% endif %}
+            
+            <form method="POST">
+                <div class="form-group">
+                    <label class="form-label" for="name">Full Name</label>
+                    <input type="text" class="form-input" id="name" name="name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="email">Email</label>
+                    <input type="email" class="form-input" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <input type="password" class="form-input" id="password" name="password" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="captcha_answer">CAPTCHA: {{ captcha_q }}</label>
+                    <input type="text" class="form-input" id="captcha_answer" name="captcha_answer" required>
+                    <input type="hidden" name="captcha_token" value="{{ captcha_t }}">
+                </div>
+                
+                <button type="submit" class="btn" style="width: 100%;">Register</button>
+            </form>
+            
+            <div class="mt-2 text-center">
+                <p>Already have an account? <a href="/login">Login here</a></p>
+                <p>Or <a href="/guest_login">play as guest</a> without registration</p>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
