@@ -1,13 +1,36 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="card" style="max-width: 500px; margin: auto; text-align: center;">
-  <h1>🔒 Feature Not Available</h1>
-  <p>This feature is not available in Guest Mode.</p>
-  <p>Please <a href="/register">create an account</a> or <a href="/login">login</a> to access this feature.</p>
-  <div style="margin-top: 20px;">
-    <a class="btn" href="/register">Create Account</a>
-    <a class="btn secondary" href="/login" style="margin-left: 10px;">Login</a>
-    <a class="btn" href="/play" style="margin-left: 10px;">Continue as Guest</a>
-  </div>
-</div>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Sudoku Secure Pro</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">Sudoku Secure Pro</div>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/play">Play</a></li>
+                <li><a href="/logout">Logout</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="card">
+            <h1>Guest Mode Restricted</h1>
+            <p>This feature is only available for registered users.</p>
+            <p>Please <a href="/register">create an account</a> or <a href="/login">login</a> to access this feature.</p>
+            
+            <div class="mt-2">
+                <a href="/register" class="btn">Register</a>
+                <a href="/login" class="btn">Login</a>
+                <a href="/play" class="btn btn-outline">Continue as Guest</a>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
