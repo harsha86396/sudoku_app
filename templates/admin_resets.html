@@ -1,20 +1,50 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="card">
-  <h2>Password Reset Attempts</h2>
-  <table class="table">
-    <thead><tr><th>ID</th><th>User ID</th><th>Expires At</th><th>Created At</th></tr></thead>
-    <tbody>
-      {% for r in rows %}
-        <tr>
-          <td>{{ r[0] }}</td>
-          <td>{{ r[1] }}</td>
-          <td>{{ r[2] }}</td>
-          <td>{{ r[3] }}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <a class="btn secondary" href="/admin">Back to Dashboard</a>
-</div>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Password Resets - Sudoku Secure Pro</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">Sudoku Secure Pro - Admin</div>
+            <ul class="nav-links">
+                <li><a href="/admin">Dashboard</a></li>
+                <li><a href="/admin/users">Users</a></li>
+                <li><a href="/admin/emails">Emails</a></li>
+                <li><a href="/admin/resets">Password Resets</a></li>
+                <li><a href="/admin/logout">Logout</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="card">
+            <h1>Password Reset Attempts</h1>
+            
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>User ID</th>
+                        <th>Expires At</th>
+                        <th>Created At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td>{{ row[0] }}</td>
+                        <td>{{ row[1] }}</td>
+                        <td>{{ row[2] }}</td>
+                        <td>{{ row[3] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+</body>
+</html>
