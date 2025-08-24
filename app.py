@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
-from utils.sudoku import make_puzzle
+from utils.sudoku import generate_sudoku
 from utils.pdf_utils import generate_last7_pdf
 import threading, schedule
 import config as config
@@ -198,6 +198,53 @@ def logout():
 def dashboard():
     if 'user_id' not in session and 'guest' not in session: 
         return redirect(url_for('index'))
+    
+    # Get user stats for dashboard
+    if 'user_id' in session:
+        conn = get_db()
+        cur = conn.cursor()
+        try:
+            # Get total games played
+            cur.execute('SELECT COUNT(*) FROM results WHERE user_id=?', (session['user_id'],))
+            total_games = cur.fetchone()[0] or 0
+            
+            # Get best time
+            cur.execute('SELECT MIN(seconds) FROM results WHERE user_id=?', (session['user_id'],))
+            best_time = cur.fetchone()[0] or 'N/A'
+            
+            # Get average time
+            cur.execute('SELECT AVG(seconds) FROM results WHERE user_id=?', (session['user_id'],))
+            avg_time = cur.fetchone()[0] or 'N/A'
+            
+            # Get rank
+            cur.execute('''
+                SELECT u.id, MIN(r.seconds) as best FROM users u
+                JOIN results r ON r.user_id=u.id
+                GROUP BY u.id ORDER BY best ASC
+            ''')
+            rows = cur.fetchall()
+            rank = 0
+            for i, row in enumerate(rows, start=1):
+                if row[0] == session['user_id']: 
+                    rank = i
+                    break
+            
+            return render_template('dashboard.html', 
+                                  name=session.get('name', 'User'), 
+                                  title='Dashboard',
+                                  total_games=total_games,
+                                  best_time=best_time,
+                                  avg_time=int(avg_time) if avg_time != 'N/A' else avg_time,
+                                  rank=rank)
+        
+        except Exception as e:
+            print(f"Dashboard error: {e}")
+            return render_template('dashboard.html', name=session.get('name', 'User'), title='Dashboard')
+        
+        finally:
+            cur.close()
+            conn.close()
+    
     return render_template('dashboard.html', name=session.get('name', 'User'), title='Dashboard')
 
 def create_and_send_otp(user_id, email, name):
@@ -374,7 +421,7 @@ def api_new_puzzle():
     
     try:
         diff = request.args.get('difficulty','medium')
-        puzzle, solution = make_puzzle(diff)
+        puzzle, solution = generate_sudoku(diff)
         
         # Store puzzle and solution in session
         session['solution'] = solution
