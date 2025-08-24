@@ -1,26 +1,44 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#22c55e">
-  <title>{{ title or 'Sudoku Secure Pro' }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <link rel="manifest" href="{{ url_for('serve_manifest') }}">
-  <link rel="icon" href="{{ url_for('static', filename='icon-192.png') }}">
-  <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Sudoku Secure Pro</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#22c55e"/>
 </head>
 <body>
-  <div class="header">
-    <div class="brand">{{ config.APP_NAME }}</div>
-    <div>
-      <button id="installButton" class="btn secondary" style="display: none; margin-right: 10px;">Install App</button>
-      <button class="theme-toggle" onclick="toggleTheme()">🌓 Theme</button>
-    </div>
-  </div>
-  <div class="container">{% block content %}{% endblock %}</div>
-  <footer>© {{ config.APP_NAME }} • <a href="#" id="installLink" onclick="promptInstall()">Install Offline App</a></footer>
-  {% block scripts %}{% endblock %}
-  <script src="{{ url_for('static', filename='js/pwa.js') }}"></script>
+    <header>
+        <nav class="container">
+            <div class="logo">Sudoku Secure Pro</div>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                {% if 'user_id' in session or 'guest' in session %}
+                    <li><a href="/dashboard">Dashboard</a></li>
+                    <li><a href="/play">Play</a></li>
+                    <li><a href="/leaderboard">Leaderboard</a></li>
+                    {% if 'user_id' in session %}
+                        <li><a href="/download_history">Download History</a></li>
+                    {% endif %}
+                    <li><a href="/logout">Logout</a></li>
+                {% else %}
+                    <li><a href="/login">Login</a></li>
+                    <li><a href="/register">Register</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="text-center mt-3">
+        <p>Sudoku Secure Pro &copy; 2024. All rights reserved.</p>
+    </footer>
+
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/pwa.js"></script>
 </body>
 </html>
