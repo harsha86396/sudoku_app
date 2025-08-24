@@ -1,189 +1,250 @@
-// Enhanced Sudoku game JavaScript with 3x3 grid styling
-let puzzle = [];
-let solution = [];
-let selected = null;
-let startTime = null;
-let timerInterval = null;
-let hintsLeft = 3;
-let original = [];
-
-function $(id){ return document.getElementById(id); }
-
-function makeCell(r,c,val,prefilled){
-  const d = document.createElement('div');
-  d.className = 'cell' + (prefilled ? ' prefilled' : '');
-  d.dataset.r = r; d.dataset.c = c;
-  d.textContent = val ? val : '';
-  d.onclick = () => { 
-    if(!prefilled){ 
-      if(selected) selected.style.outline='none'; 
-      selected = d; 
-      d.style.outline='2px solid var(--accent)'; 
-    } 
-  };
-  return d;
-}
-
-function drawBoard(){
-  const board = $('board');
-  board.innerHTML = '';
-  
-  // Create the 3x3 container grid
-  for (let boxRow = 0; boxRow < 3; boxRow++) {
-    for (let boxCol = 0; boxCol < 3; boxCol++) {
-      const box = document.createElement('div');
-      box.className = 'sudoku-box';
-      
-      // Fill the box with cells
-      for (let r = 0; r < 3; r++) {
-        for (let c = 0; c < 3; c++) {
-          const cellRow = boxRow * 3 + r;
-          const cellCol = boxCol * 3 + c;
-          const cell = makeCell(cellRow, cellCol, puzzle[cellRow][cellCol], original[cellRow][cellCol] !== 0);
-          box.appendChild(cell);
-        }
-      }
-      
-      board.appendChild(box);
+// static/js/sudoku.js
+class SudokuGame {
+    constructor() {
+        this.board = Array(9).fill().map(() => Array(9).fill(0));
+        this.solution = Array(9).fill().map(() => Array(9).fill(0));
+        this.startTime = null;
+        this.timerInterval = null;
+        this.selectedCell = null;
+        this.difficulty = 'medium';
+        this.init();
     }
-  }
-}
 
-async function newPuzzle(){
-  hintsLeft = 3; $('hints-left').textContent = hintsLeft;
-  const diff = $('difficulty').value;
-  const resp = await fetch('/api/new_puzzle?difficulty=' + diff);
-  const data = await resp.json();
-  puzzle = data.puzzle;
-  solution = data.solution;
-  original = JSON.parse(JSON.stringify(puzzle));
-  startTimer();
-  drawBoard();
-}
-
-function startTimer(){
-  if(timerInterval) clearInterval(timerInterval);
-  startTime = Date.now();
-  timerInterval = setInterval(()=>{
-    $('timer').textContent = Math.floor((Date.now() - startTime)/1000);
-  }, 500);
-}
-
-function setDigit(n){
-  if(!selected) return;
-  const r = parseInt(selected.dataset.r), c = parseInt(selected.dataset.c);
-  if(original[r][c] !== 0) return;
-  selected.textContent = n;
-  puzzle[r][c] = n;
-  validateCell(selected, r, c);
-  checkSolved();
-}
-
-function erase(){
-  if(!selected) return;
-  const r = parseInt(selected.dataset.r), c = parseInt(selected.dataset.c);
-  if(original[r][c] !== 0) return;
-  selected.textContent = '';
-  selected.classList.remove('error');
-  puzzle[r][c] = 0;
-}
-
-function validateCell(cell, r, c){
-  if(puzzle[r][c] === 0){ cell.classList.remove('error'); return; }
-  if(puzzle[r][c] !== solution[r][c]){
-    cell.classList.add('error');
-  } else {
-    cell.classList.remove('error');
-  }
-}
-
-function isSolved(){
-  for(let r=0;r<9;r++){
-    for(let c=0;c<9;c++){
-      if(puzzle[r][c] !== solution[r][c]) return false;
+    init() {
+        this.setupEventListeners();
+        this.loadNewPuzzle();
+        this.updateTimer();
     }
-  }
-  return true;
-}
 
-async function checkSolved(){
-  if(isSolved()){
-    clearInterval(timerInterval);
-    const seconds = Math.floor((Date.now() - startTime)/1000);
-    alert('🎉 Solved in ' + seconds + ' seconds!');
-    
-    // Only post to leaderboard if not in guest mode
-    if(!window.isGuestMode){
-      try{
-        const res = await fetch('/api/record_result', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({seconds})
+    setupEventListeners() {
+        // Number input
+        document.querySelectorAll('.number-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (this.selectedCell) {
+                    this.setCellValue(parseInt(e.target.dataset.num));
+                }
+            });
         });
-        const j = await res.json();
-        if(j.status === 'ok'){
-          alert('Result recorded! Your best: ' + j.best_time + 's. Rank: #' + j.rank);
-          window.location.href = '/leaderboard';
-        } else {
-          alert('Result not recorded: ' + (j.error || 'Unknown error'));
-        }
-      }catch(e){
-        console.error(e);
-        alert('Failed to post result.');
-      }
+
+        // Cell selection
+        document.querySelectorAll('.sudoku-cell').forEach(cell => {
+            cell.addEventListener('click', (e) => {
+                this.selectCell(e.target);
+            });
+        });
+
+        // Clear button
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            if (this.selectedCell && !this.selectedCell.classList.contains('fixed')) {
+                this.setCellValue(0);
+            }
+        });
+
+        // Hint button
+        document.getElementById('hint-btn').addEventListener('click', () => {
+            this.getHint();
+        });
+
+        // Check button
+        document.getElementById('check-btn').addEventListener('click', () => {
+            this.checkSolution();
+        });
+
+        // New game buttons
+        document.querySelectorAll('.difficulty-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.difficulty = e.target.dataset.diff;
+                this.loadNewPuzzle();
+            });
+        });
     }
-  }
-}
 
-async function getHint(){
-  if(hintsLeft <= 0){ alert('No hints left.'); return; }
-  const res = await fetch('/api/hint', {method:'POST'});
-  const j = await res.json();
-  if(j.error){ alert(j.error); return; }
-  const {r,c,val} = j;
-  const board = $('board');
-  const boxes = board.getElementsByClassName('sudoku-box');
-  const boxRow = Math.floor(r / 3);
-  const boxCol = Math.floor(c / 3);
-  const cellRow = r % 3;
-  const cellCol = c % 3;
-  const box = boxes[boxRow * 3 + boxCol];
-  const cell = box.children[cellRow * 3 + cellCol];
-  puzzle[r][c] = val;
-  original[r][c] = val; // lock it
-  cell.textContent = val;
-  cell.classList.add('prefilled');
-  hintsLeft = j.hints_left;
-  $('hints-left').textContent = hintsLeft;
-  checkSolved();
-}
+    selectCell(cell) {
+        // Remove previous selection
+        if (this.selectedCell) {
+            this.selectedCell.classList.remove('selected');
+        }
+        
+        // Set new selection
+        this.selectedCell = cell;
+        cell.classList.add('selected');
+    }
 
-function restart(){
-  puzzle = JSON.parse(JSON.stringify(original));
-  drawBoard();
-  startTimer();
+    setCellValue(value) {
+        if (!this.selectedCell || this.selectedCell.classList.contains('fixed')) return;
+        
+        const row = parseInt(this.selectedCell.dataset.row);
+        const col = parseInt(this.selectedCell.dataset.col);
+        
+        this.selectedCell.textContent = value === 0 ? '' : value;
+        this.board[row][col] = value;
+        
+        // Check if puzzle is complete
+        if (this.isComplete()) {
+            this.stopTimer();
+            this.showCompletionMessage();
+        }
+    }
+
+    async loadNewPuzzle() {
+        try {
+            const response = await fetch(`/api/new_puzzle?difficulty=${this.difficulty}`);
+            const data = await response.json();
+            
+            if (data.error) {
+                alert('Error loading puzzle: ' + data.error);
+                return;
+            }
+            
+            this.board = data.puzzle;
+            this.solution = data.solution;
+            this.renderBoard();
+            this.startTimer();
+            
+        } catch (error) {
+            console.error('Error loading puzzle:', error);
+            alert('Failed to load puzzle. Please try again.');
+        }
+    }
+
+    renderBoard() {
+        const container = document.getElementById('sudoku-board');
+        container.innerHTML = '';
+        
+        for (let i = 0; i < 9; i++) {
+            for (let j = 0; j < 9; j++) {
+                const cell = document.createElement('div');
+                cell.className = 'sudoku-cell';
+                cell.dataset.row = i;
+                cell.dataset.col = j;
+                
+                if (this.board[i][j] !== 0) {
+                    cell.textContent = this.board[i][j];
+                    cell.classList.add('fixed');
+                }
+                
+                // Add thicker borders for 3x3 boxes
+                if (i % 3 === 2 && i < 8) cell.style.borderBottom = '2px solid #000';
+                if (j % 3 === 2 && j < 8) cell.style.borderRight = '2px solid #000';
+                
+                container.appendChild(cell);
+            }
+        }
+        
+        // Reattach event listeners
+        document.querySelectorAll('.sudoku-cell').forEach(cell => {
+            cell.addEventListener('click', (e) => {
+                this.selectCell(e.target);
+            });
+        });
+    }
+
+    startTimer() {
+        this.stopTimer();
+        this.startTime = new Date();
+        this.timerInterval = setInterval(() => {
+            this.updateTimer();
+        }, 1000);
+    }
+
+    stopTimer() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+    }
+
+    updateTimer() {
+        if (!this.startTime) return;
+        
+        const elapsed = Math.floor((new Date() - this.startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        
+        document.getElementById('timer').textContent = 
+            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    async getHint() {
+        try {
+            const response = await fetch('/api/hint', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                alert('Error: ' + data.error);
+                return;
+            }
+            
+            // Update the board with the hint
+            this.board[data.r][data.c] = data.val;
+            this.renderBoard();
+            
+            // Update hints counter
+            document.getElementById('hints-count').textContent = data.hints_left;
+            
+        } catch (error) {
+            console.error('Error getting hint:', error);
+            alert('Failed to get hint. Please try again.');
+        }
+    }
+
+    checkSolution() {
+        for (let i = 0; i < 9; i++) {
+            for (let j = 0; j < 9; j++) {
+                if (this.board[i][j] !== this.solution[i][j]) {
+                    alert('There are errors in your solution. Keep trying!');
+                    return;
+                }
+            }
+        }
+        alert('Congratulations! Your solution is correct!');
+    }
+
+    isComplete() {
+        for (let i = 0; i < 9; i++) {
+            for (let j = 0; j < 9; j++) {
+                if (this.board[i][j] === 0 || this.board[i][j] !== this.solution[i][j]) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    async showCompletionMessage() {
+        const elapsed = Math.floor((new Date() - this.startTime) / 1000);
+        
+        try {
+            const response = await fetch('/api/record_result', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ seconds: elapsed })
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                alert(`Completed in ${elapsed} seconds! ${data.error}`);
+            } else {
+                alert(`Congratulations! Completed in ${elapsed} seconds! Your best time: ${data.best_time}s. Rank: ${data.rank}`);
+            }
+            
+        } catch (error) {
+            console.error('Error recording result:', error);
+            alert(`Completed in ${elapsed} seconds! (Error saving result)`);
+        }
+    }
 }
 
 // Initialize game when page loads
-window.addEventListener('DOMContentLoaded', ()=>{
-  // Check if we're in guest mode
-  window.isGuestMode = window.location.pathname.includes('guest') || sessionStorage.getItem('guestMode') === 'true';
-  
-  newPuzzle();
-  const isLight = document.documentElement.classList.contains('light');
-  document.getElementById('theme-name').textContent = isLight ? 'Light' : 'Dark';
-});
-
-// Keyboard support for number input
-document.addEventListener('keydown', (e) => {
-  if (e.key >= '1' && e.key <= '9') {
-    setDigit(parseInt(e.key));
-  } else if (e.key === 'Backspace' || e.key === 'Delete') {
-    erase();
-  } else if (e.key === 'h' || e.key === 'H') {
-    getHint();
-  } else if (e.key === 'r' || e.key === 'R') {
-    restart();
-  } else if (e.key === 'n' || e.key === 'N') {
-    newPuzzle();
-  }
+document.addEventListener('DOMContentLoaded', () => {
+    window.sudokuGame = new SudokuGame();
 });
