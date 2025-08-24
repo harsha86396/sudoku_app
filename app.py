@@ -1,3 +1,4 @@
+# app.py
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file
 import os, smtplib, ssl, io, random, time as time_mod, logging
 from email.mime.text import MIMEText
@@ -15,7 +16,7 @@ import config as config
 load_dotenv()
 
 # Import database functions
-from database import get_db, init_db
+from database import get_db, init_db, get_db_connection, is_postgres, execute_query
 
 app = Flask(__name__)
 app.config.from_object(config)
@@ -32,43 +33,6 @@ def setup_logging():
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
     app.logger.addHandler(handler)
-
-def get_db_connection():
-    """Get database connection with proper error handling"""
-    try:
-        conn = get_db()
-        return conn
-    except Exception as e:
-        app.logger.error(f"Database connection error: {e}")
-        # Try to reconnect or fallback to SQLite
-        try:
-            init_db()
-            return get_db()
-        except Exception as e2:
-            app.logger.error(f"Failed to reconnect to database: {e2}")
-            raise Exception("Database connection failed")
-
-def is_postgres(conn):
-    """Check if connection is PostgreSQL"""
-    return hasattr(conn, 'pgconn') or 'psycopg2' in str(type(conn))
-
-def execute_query(cur, query, params=None):
-    """Execute query with proper parameter formatting for database type"""
-    if params is None:
-        params = ()
-    
-    # Check if we're using PostgreSQL by looking at cursor type
-    is_pg = hasattr(cur, 'pgcursor') or 'psycopg2' in str(type(cur))
-    
-    if is_pg:
-        # Convert SQLite ? placeholders to %s for PostgreSQL
-        if '?' in query:
-            query = query.replace('?', '%s')
-        cur.execute(query, params)
-    else:
-        cur.execute(query, params)
-    
-    return cur
 
 def send_email(to_email, subject, body, user_id=None):
     if not app.config.get('EMAIL_ENABLED'):
@@ -165,6 +129,7 @@ def login():
     # Check admin login first
     if email == app.config['ADMIN_EMAIL'] and password == app.config['ADMIN_PASSWORD']:
         session['admin'] = True
+        app.logger.info("Admin logged in successfully")
         return redirect(url_for('admin'))
     
     # Check regular user login
@@ -176,21 +141,34 @@ def login():
         execute_query(cur, 'SELECT id,name,password_hash FROM users WHERE email=?', (email,))
         row = cur.fetchone()
         
-        if row and check_password_hash(row['password_hash'], password):
-            session['user_id'] = row['id']
-            session['name'] = row['name']
+        if not row:
+            q,t = new_captcha()
+            return render_template('login.html', err='Email not found. Please register first.', captcha_q=q, captcha_t=t)
+        
+        # Get values properly based on database type
+        if hasattr(row, 'keys'):  # PostgreSQL DictRow or SQLite Row
+            user_id = row['id']
+            name = row['name']
+            password_hash = row['password_hash']
+        else:  # Tuple
+            user_id = row[0]
+            name = row[1]
+            password_hash = row[2]
+        
+        if check_password_hash(password_hash, password):
+            session['user_id'] = user_id
+            session['name'] = name
             session['hints_left'] = 3
             app.logger.info(f"User {email} logged in successfully")
             return redirect(url_for('dashboard'))
-        
-        q,t = new_captcha()
-        app.logger.warning(f"Failed login attempt for email: {email}")
-        return render_template('login.html', err='Invalid credentials.', captcha_q=q, captcha_t=t)
+        else:
+            q,t = new_captcha()
+            return render_template('login.html', err='Invalid password.', captcha_q=q, captcha_t=t)
     
     except Exception as e:
-        app.logger.error(f"Login error: {e}")
+        app.logger.error(f"Login error: {e}", exc_info=True)
         q,t = new_captcha()
-        return render_template('login.html', err='An error occurred. Please try again.', captcha_q=q, captcha_t=t)
+        return render_template('login.html', err='Database error. Please try again later.', captcha_q=q, captcha_t=t)
     
     finally:
         if conn:
@@ -254,12 +232,21 @@ def register():
 
 @app.route('/guest_login')
 def guest_login():
-    session.clear()
-    session['guest'] = True
-    session['name'] = 'Guest'
-    session['hints_left'] = 3
-    app.logger.info("Guest user logged in")
-    return redirect(url_for('play'))
+    try:
+        session.clear()
+        session['guest'] = True
+        session['name'] = 'Guest'
+        session['hints_left'] = 3
+        # Generate a simple puzzle for guest immediately
+        puzzle, solution = generate_sudoku('medium')
+        session['solution'] = solution
+        session['puzzle'] = puzzle
+        session['original_puzzle'] = [row[:] for row in puzzle]
+        app.logger.info("Guest user logged in with puzzle")
+        return redirect(url_for('play'))
+    except Exception as e:
+        app.logger.error(f"Guest login error: {e}", exc_info=True)
+        return render_template('error.html', error='Failed to initialize guest session'), 500
 
 @app.route('/logout')
 def logout():
@@ -527,6 +514,18 @@ def reset_password():
 def play():
     if 'user_id' not in session and 'guest' not in session: 
         return redirect(url_for('index'))
+    
+    # Ensure guest has a puzzle
+    if 'guest' in session and 'puzzle' not in session:
+        try:
+            puzzle, solution = generate_sudoku('medium')
+            session['solution'] = solution
+            session['puzzle'] = puzzle
+            session['hints_left'] = 3
+            session['original_puzzle'] = [row[:] for row in puzzle]
+        except Exception as e:
+            app.logger.error(f"Failed to generate puzzle for guest: {e}")
+    
     return render_template('play.html', title='Play')
 
 @app.route('/api/new_puzzle')
@@ -542,13 +541,53 @@ def api_new_puzzle():
         session['solution'] = solution
         session['puzzle'] = puzzle
         session['hints_left'] = 3
-        session['original_puzzle'] = [row[:] for row in puzzle]  # Store original state
+        session['original_puzzle'] = [row[:] for row in puzzle]
         
         app.logger.info(f"New puzzle generated for {session.get('name')} with difficulty {diff}")
         return jsonify({'puzzle': puzzle, 'solution': solution})
     
     except Exception as e:
-        app.logger.error(f"New puzzle error: {e}")
+        app.logger.error(f"New puzzle error: {e}", exc_info=True)
+        return jsonify({'error': 'Failed to generate puzzle. Please try again.'}), 500
+
+@app.route('/api/simple_puzzle')
+def api_simple_puzzle():
+    """Fallback puzzle generator for guests"""
+    try:
+        # Simple fixed puzzle for testing
+        puzzle = [
+            [5, 3, 0, 0, 7, 0, 0, 0, 0],
+            [6, 0, 0, 1, 9, 5, 0, 0, 0],
+            [0, 9, 8, 0, 0, 0, 0, 6, 0],
+            [8, 0, 0, 0, 6, 0, 0, 0, 3],
+            [4, 0, 0, 8, 0, 3, 0, 0, 1],
+            [7, 0, 0, 0, 2, 0, 0, 0, 6],
+            [0, 6, 0, 0, 0, 0, 2, 8, 0],
+            [0, 0, 0, 4, 1, 9, 0, 0, 5],
+            [0, 0, 0, 0, 8, 0, 0, 7, 9]
+        ]
+        
+        solution = [
+            [5, 3, 4, 6, 7, 8, 9, 1, 2],
+            [6, 7, 2, 1, 9, 5, 3, 4, 8],
+            [1, 9, 8, 3, 4, 2, 5, 6, 7],
+            [8, 5, 9, 7, 6, 1, 4, 2, 3],
+            [4, 2, 6, 8, 5, 3, 7, 9, 1],
+            [7, 1, 3, 9, 2, 4, 8, 5, 6],
+            [9, 6, 1, 5, 3, 7, 2, 8, 4],
+            [2, 8, 7, 4, 1, 9, 6, 3, 5],
+            [3, 4, 5, 2, 8, 6, 1, 7, 9]
+        ]
+        
+        session['solution'] = solution
+        session['puzzle'] = puzzle
+        session['hints_left'] = 3
+        session['original_puzzle'] = [row[:] for row in puzzle]
+        
+        return jsonify({'puzzle': puzzle, 'solution': solution})
+    
+    except Exception as e:
+        app.logger.error(f"Simple puzzle error: {e}")
         return jsonify({'error': 'Failed to generate puzzle'}), 500
 
 @app.route('/api/hint', methods=['POST'])
