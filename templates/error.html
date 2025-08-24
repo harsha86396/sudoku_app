@@ -1,9 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - {{ title if title else 'Sudoku Secure Pro' }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#22c55e"/>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">Sudoku Secure Pro</div>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                {% if 'user_id' in session or 'guest' in session %}
+                    <li><a href="/dashboard">Dashboard</a></li>
+                    <li><a href="/play">Play</a></li>
+                    <li><a href="/logout">Logout</a></li>
+                {% else %}
+                    <li><a href="/login">Login</a></li>
+                    <li><a href="/register">Register</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
 
-{% extends "base.html" %}
-{% block content %}
-<article class="card">
-  <h2>Error</h2>
-  <p>{{ error }}</p>
-  <p><a href="{{ url_for('index') }}">Go home</a></p>
-</article>
-{% endblock %}
+    <main class="container">
+        <div class="card">
+            <h1>Error</h1>
+            <p>{{ error }}</p>
+            <div class="mt-2">
+                <a href="/" class="btn">Return to Home</a>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center mt-3">
+        <p>Sudoku Secure Pro &copy; 2024. All rights reserved.</p>
+    </footer>
+
+    <script src="/static/js/theme.js"></script>
+    <script src="/static/js/pwa.js"></script>
+</body>
+</html>
