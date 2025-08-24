@@ -7,6 +7,19 @@
     --light: #f8fafc;
     --gray: #64748b;
     --border: #e2e8f0;
+    --text: #1f2937;
+    --bg: #ffffff;
+    --card-bg: #ffffff;
+    --header-bg: #0f172a;
+}
+
+[data-theme="dark"] {
+    --text: #e2e8f0;
+    --bg: #0f172a;
+    --card-bg: #1e293b;
+    --header-bg: #020617;
+    --border: #334155;
+    --light: #1e293b;
 }
 
 * {
@@ -17,9 +30,10 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--light);
-    color: var(--dark);
+    background-color: var(--bg);
+    color: var(--text);
     line-height: 1.6;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .container {
@@ -30,7 +44,7 @@ body {
 
 /* Header */
 header {
-    background-color: var(--dark);
+    background-color: var(--header-bg);
     color: white;
     padding: 1rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -40,6 +54,7 @@ nav {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .logo {
@@ -52,6 +67,7 @@ nav {
     display: flex;
     gap: 1.5rem;
     list-style: none;
+    flex-wrap: wrap;
 }
 
 .nav-links a {
@@ -75,19 +91,25 @@ nav {
     cursor: pointer;
     text-decoration: none;
     transition: background-color 0.3s;
+    font-size: 1rem;
 }
 
 .btn:hover {
     background-color: var(--primary-dark);
+    transform: translateY(-1px);
 }
 
 .btn-secondary {
     background-color: var(--secondary);
 }
 
+.btn-secondary:hover {
+    background-color: #2563eb;
+}
+
 .btn-outline {
     background-color: transparent;
-    border: 1px solid var(--primary);
+    border: 2px solid var(--primary);
     color: var(--primary);
 }
 
@@ -105,14 +127,34 @@ nav {
     display: block;
     margin-bottom: 0.5rem;
     font-weight: bold;
+    color: var(--text);
 }
 
 .form-input {
     width: 100%;
-    padding: 0.5rem;
+    padding: 0.75rem;
     border: 1px solid var(--border);
-    border-radius: 0.25rem;
+    border-radius: 0.375rem;
     font-size: 1rem;
+    background-color: var(--card-bg);
+    color: var(--text);
+    transition: border-color 0.3s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+/* Cards */
+.card {
+    background-color: var(--card-bg);
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: background-color 0.3s ease;
 }
 
 /* Sudoku Board */
@@ -126,10 +168,11 @@ nav {
 
 .sudoku-board {
     display: grid;
-    grid-template-columns: repeat(9, 40px);
-    grid-template-rows: repeat(9, 40px);
+    grid-template-columns: repeat(9, minmax(40px, 50px));
+    grid-template-rows: repeat(9, minmax(40px, 50px));
     gap: 0;
-    border: 2px solid var(--dark);
+    border: 2px solid var(--border);
+    background-color: var(--card-bg);
 }
 
 .sudoku-cell {
@@ -141,43 +184,65 @@ nav {
     font-weight: bold;
     cursor: pointer;
     user-select: none;
+    background-color: var(--card-bg);
+    color: var(--text);
+    transition: background-color 0.2s;
 }
 
 .sudoku-cell.fixed {
-    background-color: #f1f5f9;
-    color: var(--dark);
+    background-color: var(--light);
+    color: var(--text);
+    font-weight: bold;
 }
 
 .sudoku-cell.selected {
     background-color: #bfdbfe;
+    color: #1e40af;
+}
+
+.sudoku-cell.error {
+    background-color: #fecaca;
+    color: #dc2626;
 }
 
 .sudoku-controls {
     display: flex;
     gap: 1rem;
     margin-top: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 .number-pad {
     display: grid;
-    grid-template-columns: repeat(5, 40px);
+    grid-template-columns: repeat(5, 50px);
     gap: 0.5rem;
     margin-top: 1rem;
 }
 
 .number-btn {
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--border);
-    border-radius: 0.25rem;
+    border: 2px solid var(--border);
+    border-radius: 0.5rem;
     cursor: pointer;
     font-weight: bold;
+    font-size: 1.2rem;
+    background-color: var(--card-bg);
+    color: var(--text);
+    transition: all 0.2s;
 }
 
 .number-btn:hover {
+    background-color: var(--primary);
+    color: white;
+    transform: scale(1.05);
+}
+
+.number-btn.active {
     background-color: var(--primary);
     color: white;
 }
@@ -189,18 +254,19 @@ nav {
     align-items: center;
     margin-bottom: 1rem;
     padding: 1rem;
-    background-color: white;
+    background-color: var(--card-bg);
     border-radius: 0.5rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
-/* Cards */
-.card {
-    background-color: white;
-    border-radius: 0.5rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
+.game-info select {
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.25rem;
+    background-color: var(--card-bg);
+    color: var(--text);
 }
 
 /* Tables */
@@ -208,6 +274,7 @@ nav {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 1rem;
+    background-color: var(--card-bg);
 }
 
 .table th,
@@ -215,11 +282,16 @@ nav {
     padding: 0.75rem;
     text-align: left;
     border-bottom: 1px solid var(--border);
+    color: var(--text);
 }
 
 .table th {
-    background-color: #f8fafc;
+    background-color: var(--light);
     font-weight: bold;
+}
+
+.table tr:hover {
+    background-color: var(--light);
 }
 
 /* Utilities */
@@ -235,6 +307,14 @@ nav {
 .mb-2 { margin-bottom: 1rem; }
 .mb-3 { margin-bottom: 1.5rem; }
 
+/* Footer */
+footer {
+    margin-top: 3rem;
+    padding: 1rem 0;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .sudoku-board {
@@ -245,10 +325,81 @@ nav {
     .nav-links {
         flex-direction: column;
         gap: 0.5rem;
+        margin-top: 1rem;
     }
     
     .game-info {
         flex-direction: column;
         gap: 1rem;
     }
+    
+    .number-pad {
+        grid-template-columns: repeat(5, 40px);
+    }
+    
+    .number-btn {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .sudoku-controls {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .btn {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .sudoku-board {
+        grid-template-columns: repeat(9, 30px);
+        grid-template-rows: repeat(9, 30px);
+    }
+    
+    .number-pad {
+        grid-template-columns: repeat(5, 35px);
+    }
+    
+    .number-btn {
+        width: 35px;
+        height: 35px;
+        font-size: 1rem;
+    }
+    
+    .container {
+        padding: 0 0.5rem;
+    }
+    
+    .card {
+        padding: 1rem;
+    }
+}
+
+/* Animation for success */
+@keyframes success {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.success {
+    animation: success 0.5s ease;
+}
+
+/* Loading spinner */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
